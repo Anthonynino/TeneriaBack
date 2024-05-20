@@ -1,13 +1,13 @@
 import { sequelize } from "../database/db.js";
 import { DataTypes } from "sequelize";
 
-export const categoryModel = sequelize.define("categories", {
+export const rolModel = sequelize.define("roles", {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
-  name: {
+  rol: {
     type: DataTypes.STRING,
     allowNull: false,
   },

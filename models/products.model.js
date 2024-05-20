@@ -1,7 +1,7 @@
-import { sequelize } from "../database/db.js";
-import { DataTypes } from "sequelize";
+import { sequelize } from '../database/db.js'
+import { DataTypes } from 'sequelize'
 
-export const productsModel = sequelize.define("products", {
+export const productsModel = sequelize.define('products', {
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
@@ -27,7 +27,7 @@ export const productsModel = sequelize.define("products", {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  category: {
+  categoryId: {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
@@ -35,4 +35,8 @@ export const productsModel = sequelize.define("products", {
     type: DataTypes.DATE,
     default: Date.now,
   },
-});
+  status: {
+    type: DataTypes.BIGINT,
+    defaultValue: 1,
+  },
+})

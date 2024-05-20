@@ -1,7 +1,7 @@
-import { sequelize } from "../database/db.js";
-import { DataTypes } from "sequelize"
+import { sequelize } from '../database/db.js'
+import { DataTypes } from 'sequelize'
 
-export const userModel = sequelize.define("users", {
+export const userModel = sequelize.define('users', {
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
@@ -12,7 +12,6 @@ export const userModel = sequelize.define("users", {
     allowNull: false,
     trim: true,
     unique: true,
-    
   },
   email: {
     type: DataTypes.STRING,
@@ -24,4 +23,8 @@ export const userModel = sequelize.define("users", {
     type: DataTypes.STRING,
     allowNull: false,
   },
-});
+  rolId: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+  },
+})
