@@ -74,27 +74,10 @@ export const logout = async (req, res) => {
   return res.sendStatus(200);
 };
 
-//Validar si el usuario esta registrado
-export const profile = async (req, res) => {
-  try {
-    const user = await userModel.findByPk(req.user.payload.id);
-
-    if (!user) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    res.json({ user });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-};
-
 //Verificacion del token para poder usarlo en solo las paginas necesarias
 export const verifyToken = async (req, res) => {
   const { token } = req.cookies;
   
-  console.log(token)
   if (!token) {
     return res.status(401).json({ message: "No autorizado" });
   }
@@ -110,20 +93,4 @@ export const verifyToken = async (req, res) => {
     }
     return res.json(userFound);
   });
-};
-
-export const consultarUsuario = async (req, res) => {
-  const { username } = req.body;
-  try {
-    const userFound = await userModel.findOne({
-      where: {
-        username,
-      },
-    });
-
-    res.json(userFound);
-    console.log(userFound);
-  } catch (error) {
-    console.log(error)
-  }
 };

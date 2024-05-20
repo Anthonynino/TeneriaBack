@@ -1,0 +1,3 @@
+#Aqui se declaran los archivos que no queremos que se suban al git
+node_modules
+.env
