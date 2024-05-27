@@ -1,5 +1,5 @@
-import { sequelize } from '../database/db.js'
-import { DataTypes } from 'sequelize'
+import { sequelize } from '../database/db.js';
+import { DataTypes } from 'sequelize';
 
 export const productsModel = sequelize.define('products', {
   id: {
@@ -12,7 +12,7 @@ export const productsModel = sequelize.define('products', {
     allowNull: false,
   },
   quantity: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     allowNull: false,
   },
   code: {
@@ -28,15 +28,17 @@ export const productsModel = sequelize.define('products', {
     allowNull: true,
   },
   categoryId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     allowNull: false,
   },
   date: {
     type: DataTypes.DATE,
-    default: Date.now,
+    defaultValue: DataTypes.NOW,
   },
   status: {
     type: DataTypes.BIGINT,
     defaultValue: 1,
   },
-})
+}, {
+  timestamps: false,
+});

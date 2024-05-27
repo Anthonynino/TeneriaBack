@@ -15,6 +15,10 @@ export const registerShema = z.object({
     }).min(6, {
       message: 'La contraseña debe tener al menos 6 caracteres',
     }),
+  rolId: z.number({
+    required_error: 'El rol es requerido',
+    message: 'El rol es incorrecto',
+  })
 })
 
 export const loginSchema = z.object({

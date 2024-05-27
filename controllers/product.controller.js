@@ -1,91 +1,89 @@
-import { productsModel } from "../models/products.model.js"
+import { productsModel } from '../models/products.model.js'
 
-//Obtener todas las tareas
+//Obtener todos los productos
 export const getAllProducts = async (req, res) => {
   try {
     const products = await productsModel.findAll({
-        where: { //Esto es una validación para que me traiga solo las tareas de mi usuario 
-         userId: req.user.payload.id
-        } 
-    });
-    res.json(products);
+      where: { status: 1 },
+    })
+    res.json(products)
   } catch (error) {
-    res.json({ message: err.message });
+    res.json({ message: err.message })
+  }
+}
+
+//Obtener solo un producto
+export const getProduct = async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log(id)
+    const product = await productsModel.findOne({
+      where: {
+        id,
+        status: 1
+      },
+    });
+    if (!product) {
+      return res.status(404).json({message: 'Producto no encontrado'});
+    }
+
+    res.json(product);
+  } catch (error) {
+    res.json({ message: error.message });
   }
 };
 
-//Crear una tarea
-/* export const createProduct = async (req, res) => {
+//Crear un producto
+export const createProduct = async (req, res) => {
   try {
-    const { title, description, date } = req.body;
-    const tokenId = req.user.payload.id
+    const { name, quantity, code, ubication, size, categoryId} = req.body;
     const newProduct = await productsModel.create({
-      title,
-      description,
-      date,
-      userId: tokenId
+      name,
+      quantity,
+      code,
+      ubication,
+      size,
+      categoryId
     });
 
     res.json(newProduct);
   } catch (error) {
     res.json({ message: error.message });
   }
-}; */
-
-//Obtener solo una tarea
-/* export const getTask = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const task = await productsModel.findOne({
-      where: {
-        id,
-      },
-    });
-    if (!task) {
-      return res.status(404).json({message: 'Tarea no encontrada'});
-    }
-
-    res.json(task);
-  } catch (error) {
-    res.json({ message: error.message });
-  }
 };
- */
-//Eliminar solo una tarea
-/* export const deleteTask = async (req, res) => {
+
+// Aumentar o disminuir el stock de un producto
+export const updateStock = async (req, res) => {
   try {
     const id = req.params.id;
-    const task = await productsModel.destroy({
-      where: {
-        id,
-      },
-    });
-    if (!task) {
-      return res.status(404).json({message: 'Error no se encontro ninguna tarea'})
-    }
-    res.json({message: 'Tarea eliminada correctamente'});
-  } catch (error) {
-    res.json({ message: error.message });
-  }
-}; */
+    const { quantity } = req.body;
 
-//Actualizar una tarea
-/* export const updateTask = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const [updatedRows] = await productsModel.update(req.body, { //la función update devuelve un array
-      where: {
-        id,
-      },
-    });
-
-    if (updatedRows === 0) { //Si updatedRows es igual a 0, significa que ninguna fila se actualizó como resultado de la operación.
-      return res.status(404).json({ message: 'Error: no se encontró ninguna tarea' });
+    const product = await productsModel.findByPk(id);
+    if (!product) {
+      // Si el producto no se encuentra, devolver un error 404
+      return res.status(404).json({ message: 'Producto no encontrado' });
     }
 
-    res.json({ message: "La tarea se actualizó correctamente" });
+    let updatedProduct;
+
+    if (quantity >= 0) {
+      // Aumentar el stock si la cantidad es positiva
+      updatedProduct = await product.increment('quantity', { by: quantity });
+    } else {
+      // Disminuir el stock si la cantidad es negativa
+      // Verificar si hay suficiente stock disponible para disminuir
+      if (product.quantity < Math.abs(quantity)) {
+        return res.status(400).json({ message: 'No hay suficiente stock disponible' });
+      }
+      updatedProduct = await product.decrement('quantity', { by: Math.abs(quantity) });
+    }
+    
+    // Devolver el producto actualizado en la respuesta
+    res.json(updatedProduct);
   } catch (error) {
+    // Si hay un error interno del servidor, devolver un error 500
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
- */
+
+
