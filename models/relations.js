@@ -1,25 +1,45 @@
-import { productsModel } from './products.model.js'
-import { categoryModel } from './category.model.js'
-import { rolModel } from './roles.model.js'
-import { userModel } from './user.model.js'
+import { productsModel } from './products.model.js';
+import { categoryModel } from './category.model.js';
+import { rolModel } from './roles.model.js';
+import { userModel } from './user.model.js';
+import { inventoryMovementsModel } from './inventoryMovements.model.js';
 
-// Define la relación entre un producto y su rol
+// Define la relación entre un Usuario y un Rol
 userModel.belongsTo(rolModel, {
   foreignKey: 'rolId',
   as: 'rol',
-})
+});
 rolModel.hasMany(userModel, {
   foreignKey: 'rolId',
   as: 'users',
-})
+});
 
-// Define la relación entre el un producto y una categoria
+// Define la relación entre un Producto y una Categoría
 productsModel.belongsTo(categoryModel, {
-  foreignKey: 'caregoryId',
+  foreignKey: 'categoryId',
   as: 'productCategory',
-})
-
+});
 categoryModel.hasMany(productsModel, {
-  foreignKey: 'caregoryId',
-  as: 'categoryPro',
-})
+  foreignKey: 'categoryId',
+  as: 'categoryProducts',
+});
+
+// Define la relación entre un Movimiento de Inventario y un Producto
+inventoryMovementsModel.belongsTo(productsModel, {
+  foreignKey: 'productId',
+  as: 'product',
+});
+productsModel.hasMany(inventoryMovementsModel, {
+  foreignKey: 'productId',
+  as: 'inventoryMovements',
+});
+
+// Define la relación entre un Movimiento de Inventario y un Usuario
+inventoryMovementsModel.belongsTo(userModel, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+userModel.hasMany(inventoryMovementsModel, {
+  foreignKey: 'userId',
+  as: 'inventoryMovements',
+});

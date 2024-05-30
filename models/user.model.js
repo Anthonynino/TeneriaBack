@@ -25,6 +25,6 @@ export const userModel = sequelize.define('users', {
   },
   rolId: {
     type: DataTypes.BIGINT,
-    allowNull: true,
+    allowNull: false,
   },
 })

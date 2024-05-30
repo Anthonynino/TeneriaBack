@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 export const rolModel = sequelize.define("roles", {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     primaryKey: true,
     autoIncrement: true,
   },

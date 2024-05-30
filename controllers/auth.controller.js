@@ -13,7 +13,8 @@ import { TOKEN_SECRET } from "../config.js";
 
 //Registra un nuevo usuario.
 export const register = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, rolId } = req.body;
+  console.log(username, email, password, rolId)
   try {
     //Encriptacion de la contraseña
     const passwordHash = await bcrypt.hash(password, 10);
@@ -22,6 +23,7 @@ export const register = async (req, res) => {
       username,
       email,
       password: passwordHash,
+      rolId
     });
 
     //Aqui lo que hacemos es pasarle el parametro que vamos a usar para indentificar el token, que es el id

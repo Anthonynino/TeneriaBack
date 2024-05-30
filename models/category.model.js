@@ -3,7 +3,7 @@ import { DataTypes } from "sequelize";
 
 export const categoryModel = sequelize.define("categories", {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     primaryKey: true,
     autoIncrement: true,
   },
