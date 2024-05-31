@@ -4,7 +4,8 @@ import {
   getAllProducts,
   getProduct,
   createProduct,
-  updateStock
+  updateStock,
+  deleteProduct,
 } from "../controllers/product.controller.js";
 
 const router = Router();
@@ -12,5 +13,6 @@ const router = Router();
 router.get("/products", authRequire, getAllProducts);
 router.get("/products/:id", authRequire, getProduct);
 router.post("/products", authRequire, createProduct);
-router.post("/products/:id", authRequire, updateStock)
+router.post("/products/:id", authRequire, updateStock);
+router.delete("/products/:id", authRequire, deleteProduct);
 export default router;
