@@ -5,6 +5,7 @@ import cors from 'cors' //Utilizamos este modulo para poder configurar los cors,
 import { sequelize } from './database/db.js'
 import authRoutes from './routes/auth.routes.js'
 import productRoutes from './routes/product.routes.js'
+import categoryRoutes from './routes/categories.routes.js'
 import './models/relations.js' //Relaciones de los modelos
 
 const app = express()
@@ -16,6 +17,7 @@ app.use(cookieParser())
 
 app.use('/api', authRoutes)
 app.use('/api', productRoutes)
+app.use('/api', categoryRoutes)
 
 async function main() {
   try {

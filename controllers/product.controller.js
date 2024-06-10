@@ -2,13 +2,14 @@ import { productsModel } from '../models/products.model.js'
 
 //Obtener todos los productos
 export const getAllProducts = async (req, res) => {
+  const { categoryId } = req.params // Obtener el parámetro de ruta categoryId
   try {
     const products = await productsModel.findAll({
-      where: { status: 1 },
+      where: { categoryId, status: 1 },
     })
     res.json(products)
   } catch (error) {
-    res.json({ message: err.message })
+    res.status(500).json({ message: 'Error al buscar los productos', error })
   }
 }
 
