@@ -10,7 +10,7 @@ import {
 
 const router = Router();
 
-router.get("/products", authRequire, getAllProducts);
+router.get("/products/:categoryId", authRequire, getAllProducts);
 router.get("/products/:id", authRequire, getProduct);
 router.post("/products", authRequire, createProduct);
 router.post("/products/:id", authRequire, updateStock);
