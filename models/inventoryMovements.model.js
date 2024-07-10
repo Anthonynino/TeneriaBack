@@ -2,7 +2,7 @@ import { sequelize } from '../database/db.js'
 import { DataTypes } from 'sequelize'
 
 export const inventoryMovementsModel = sequelize.define(
-  'InventoryMovements',
+  'inventoryMovements',
   {
     id: {
       type: DataTypes.BIGINT,
