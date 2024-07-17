@@ -17,7 +17,6 @@ export const getAllProducts = async (req, res) => {
 export const getProduct = async (req, res) => {
   try {
     const id = req.params.id
-    console.log(id)
     const product = await productsModel.findOne({
       where: {
         id,

@@ -6,6 +6,7 @@ import { sequelize } from './database/db.js'
 import authRoutes from './routes/auth.routes.js'
 import productRoutes from './routes/product.routes.js'
 import categoryRoutes from './routes/categories.routes.js'
+import dashboardRoutes from './routes/dashboard.routes.js'
 import './models/relations.js' //Relaciones de los modelos
 
 const app = express()
@@ -15,9 +16,11 @@ app.use(morgan('dev'))
 app.use(express.json())
 app.use(cookieParser())
 
+// Rutas de las peticiones
 app.use('/api', authRoutes)
 app.use('/api', productRoutes)
 app.use('/api', categoryRoutes)
+app.use('/api', dashboardRoutes)
 
 async function main() {
   try {
