@@ -11,7 +11,7 @@ export function createAccessToken(payload) {
         },
         TOKEN_SECRET,
         {
-          expiresIn: "34d",
+          expiresIn: "1d",
         },
         (error, token) => {
           if (error){

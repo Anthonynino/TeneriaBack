@@ -31,6 +31,10 @@ export const productsModel = sequelize.define('products', {
     type: DataTypes.BIGINT,
     allowNull: false,
   },
+  supplierId: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+  },
   date: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
