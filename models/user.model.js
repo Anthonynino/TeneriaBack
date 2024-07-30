@@ -13,12 +13,6 @@ export const userModel = sequelize.define('users', {
     trim: true,
     unique: true,
   },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    trim: true,
-    unique: true,
-  },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -27,4 +21,8 @@ export const userModel = sequelize.define('users', {
     type: DataTypes.BIGINT,
     allowNull: false,
   },
-})
+},
+{
+  timestamps: false,
+}
+)
