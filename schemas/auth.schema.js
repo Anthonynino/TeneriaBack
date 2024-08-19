@@ -4,12 +4,6 @@ export const registerShema = z.object({
     required_error: 'El usuario es requerido',
     message: 'El usuario es incorrecto',
   }),
-  email: z.string({
-      required_error: 'El correo es requerido',
-    }).email({
-      message: 'Formato del email invalido',
-    }),
-
   password: z.string({
       required_error: 'La contraseña es requerida',
     }).min(6, {
