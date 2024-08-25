@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes.js'
 import productRoutes from './routes/product.routes.js'
 import categoryRoutes from './routes/categories.routes.js'
 import dashboardRoutes from './routes/dashboard.routes.js'
+import supplierRoutes  from './routes/supplier.routes.js' 
 import './models/relations.js' //Relaciones de los modelos
 
 const app = express()
@@ -21,6 +22,7 @@ app.use('/api', authRoutes)
 app.use('/api', productRoutes)
 app.use('/api', categoryRoutes)
 app.use('/api', dashboardRoutes)
+app.use('/api', supplierRoutes)
 
 async function main() {
   try {
