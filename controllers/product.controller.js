@@ -33,10 +33,20 @@ export const getProduct = async (req, res) => {
   }
 }
 
-//Crear un producto
+// Crear un producto
 export const createProduct = async (req, res) => {
   try {
-    const { name, quantity, code, ubication, size, categoryId } = req.body
+    const { name, quantity, code, ubication, size, categoryId, supplierId } =
+      req.body
+
+    // Validar que todos los campos requeridos estén presentes
+    if (!name || !quantity || !code || !ubication || !size || !categoryId || !supplierId) {
+      return res
+        .status(400)
+        .json({ message: 'Todos los campos son requeridos' })
+    }
+
+    // Crear el nuevo producto
     const newProduct = await productsModel.create({
       name,
       quantity,
@@ -44,11 +54,14 @@ export const createProduct = async (req, res) => {
       ubication,
       size,
       categoryId,
+      supplierId,
     })
 
+    // Enviar la respuesta con el nuevo producto creado
     res.json(newProduct)
   } catch (error) {
-    res.json({ message: error.message })
+    // Manejo de errores
+    res.status(500).json({ message: error.message })
   }
 }
 
