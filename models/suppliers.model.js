@@ -20,6 +20,14 @@ export const suppliersModel = sequelize.define("supplier", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  location: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  IsInNationalTerritory: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+  },
   status: {
     type: DataTypes.BIGINT,
     defaultValue: 1,
