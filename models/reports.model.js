@@ -1,39 +1,41 @@
 import { sequelize } from '../database/db.js'
 import { DataTypes } from 'sequelize'
+import { Sequelize} from 'sequelize'
 
-export const inventoryMovementsModel = sequelize.define(
-  'inventory_movements',
+export const reportModel = sequelize.define(
+  'Report',
   {
     id: {
       type: DataTypes.BIGINT,
-      autoIncrement: true,
       primaryKey: true,
+      autoIncrement: true,
     },
-    productId: {
-      type: DataTypes.BIGINT,
+    filePath: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    quantity: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    movementType: {
-      type: DataTypes.ENUM('Entrada', 'Salida'),
-      allowNull: false,
-    },
-    movementDate: {
+    generatedDate: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      defaultValue: Sequelize.NOW,
+    },
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    endDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
     },
     userId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true
     },
-    departmentId: {
+    status: {
       type: DataTypes.BIGINT,
-      allowNull: true,
-    }
+      allowNull: false,
+      defaultValue: 1,
+    },
   },
   {
     timestamps: false,

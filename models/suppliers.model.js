@@ -16,10 +16,6 @@ export const suppliersModel = sequelize.define("supplier", {
     allowNull: false,
     unique: true,
   },
-  address: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
   location: {
     type: DataTypes.STRING,
     allowNull: true,
