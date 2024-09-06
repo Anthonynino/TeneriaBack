@@ -4,6 +4,8 @@ import { rolModel } from './roles.model.js'
 import { userModel } from './user.model.js'
 import { inventoryMovementsModel } from './inventoryMovements.model.js'
 import { suppliersModel } from './suppliers.model.js'
+import { departmentsModel } from './departments.model.js'
+import { reportModel } from './reports.model.js'
 
 // Define la relación entre un Usuario y un Rol
 userModel.belongsTo(rolModel, {
@@ -55,4 +57,26 @@ productsModel.belongsTo(suppliersModel, {
 suppliersModel.hasMany(productsModel, {
   foreignKey: 'supplierId',
   as: 'products',
+})
+
+//Define las relaciones entre un movimiento de invetario y un departamento
+inventoryMovementsModel.belongsTo(departmentsModel, {
+  foreignKey: 'departmentId',
+  as: 'movementDepartment'
+})
+
+departmentsModel.hasMany(inventoryMovementsModel, {
+  foreignKey: 'departmentId',
+  as: 'departmentInventory'
+})
+
+//Definir relaciones de un usuario con el reporte
+reportModel.belongsTo(userModel, {
+  foreignKey: 'userId',
+  as: 'reportUser'
+})
+
+userModel.hasMany(reportModel, {
+  foreignKey: 'userId',
+  as: 'usersReports'
 })
