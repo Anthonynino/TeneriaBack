@@ -3,7 +3,7 @@ import { DataTypes } from 'sequelize'
 import { Sequelize} from 'sequelize'
 
 export const reportModel = sequelize.define(
-  'Reports',
+  'reports',
   {
     id: {
       type: DataTypes.BIGINT,

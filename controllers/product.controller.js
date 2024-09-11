@@ -1,4 +1,6 @@
 import { productsModel } from '../models/products.model.js'
+import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
+import { sequelize } from '../database/db.js'
 
 //Obtener todos los productos
 export const getAllProducts = async (req, res) => {
@@ -6,6 +8,7 @@ export const getAllProducts = async (req, res) => {
   try {
     const products = await productsModel.findAll({
       where: { categoryId, status: 1 },
+      order: [['id', 'ASC']],
     })
     res.json(products)
   } catch (error) {
@@ -40,7 +43,15 @@ export const createProduct = async (req, res) => {
       req.body
 
     // Validar que todos los campos requeridos estén presentes
-    if (!name || !quantity || !code || !ubication || !size || !categoryId || !supplierId) {
+    if (
+      !name ||
+      !quantity ||
+      !code ||
+      !ubication ||
+      !size ||
+      !categoryId ||
+      !supplierId
+    ) {
       return res
         .status(400)
         .json({ message: 'Todos los campos son requeridos' })
@@ -67,39 +78,68 @@ export const createProduct = async (req, res) => {
 
 // Aumentar o disminuir el stock de un producto
 export const updateStock = async (req, res) => {
+  const transaction = await sequelize.transaction()
   try {
-    const id = req.params.id
-    const { quantity } = req.body
+    const { productId, quantity, userId, departmentId, movementType } = req.body
 
-    const product = await productsModel.findByPk(id)
+    // Verificar si la cantidad es válida
+    if (quantity === 0) {
+      return res
+        .status(400)
+        .json({ message: 'La cantidad debe ser diferente de cero' })
+    }
+
+    // Buscar el producto
+    const product = await productsModel.findByPk(productId, { transaction })
     if (!product) {
       // Si el producto no se encuentra, devolver un error 404
+      await transaction.rollback()
       return res.status(404).json({ message: 'Producto no encontrado' })
     }
 
-    let updatedProduct
-
-    if (quantity >= 0) {
+    // Actualizar el stock
+    if (quantity > 0) {
       // Aumentar el stock si la cantidad es positiva
-      updatedProduct = await product.increment('quantity', { by: quantity })
+      await product.increment('quantity', { by: quantity, transaction })
     } else {
       // Disminuir el stock si la cantidad es negativa
-      // Verificar si hay suficiente stock disponible para disminuir
       if (product.quantity < Math.abs(quantity)) {
+        await transaction.rollback()
         return res
           .status(400)
           .json({ message: 'No hay suficiente stock disponible' })
       }
-      updatedProduct = await product.decrement('quantity', {
+      await product.decrement('quantity', {
         by: Math.abs(quantity),
+        transaction,
       })
     }
 
-    // Devolver el producto actualizado en la respuesta
-    res.json(updatedProduct)
+    // Registrar el movimiento de inventario
+    await inventoryMovementsModel.create(
+      {
+        productId,
+        quantity,
+        movementType,
+        movementDate: new Date(),
+        userId,
+        departmentId,
+      },
+      { transaction }
+    )
+
+    // Confirmar la transacción
+    await transaction.commit()
+
+    // Devolver la respuesta exitosa
+    res.json({
+      message: 'Stock actualizado y movimiento registrado exitosamente',
+    })
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await transaction.rollback()
     // Si hay un error interno del servidor, devolver un error 500
-    res.status(500).json({ message: 'Error interno del servidor' })
+    res.status(500).json({ message: 'Error interno del servidor', error })
   }
 }
 
@@ -122,12 +162,13 @@ export const deleteProduct = async (req, res) => {
         .json({ message: 'El producto tiene stock y no se puede eliminar' })
     }
 
-    // Si la cantidad es 0, elimina el producto
-    await productsModel.destroy({
-      where: {
-        id,
-      },
-    })
+    // Si la cantidad es 0, elimina el producto de manera logica
+    await productsModel.update(
+      { status: 0 },
+      {
+        where: { id },
+      }
+    )
 
     return res.status(200).json({ message: 'Producto eliminado con éxito' })
   } catch (error) {
