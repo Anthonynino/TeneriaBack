@@ -34,7 +34,7 @@ export const register = async (req, res) => {
   } catch (error) {
     res
       .status(500)
-      .json(["No se pudo registrar, revisa el correo o el nombre del usuario"]);
+      .json(["No se pudo registrar, revisa el nombre del usuario"]);
   }
 };
 

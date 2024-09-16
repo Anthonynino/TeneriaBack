@@ -15,13 +15,12 @@ export const getAllSuppliers = async (req, res) => {
 
 export const createNewSupplier = async (req, res) => {
   try {
-    const { companyName, RIF, address, location, IsInNationalTerritory } = req.body
+    const { companyName, RIF, location, IsInNationalTerritory } = req.body
 
     // Validar que todos los campos requeridos estén presentes
     if (
       !companyName ||
       !RIF ||
-      !address ||
       !location ||
       IsInNationalTerritory === undefined
     ) {
@@ -33,7 +32,6 @@ export const createNewSupplier = async (req, res) => {
     const newSupplier = await suppliersModel.create({
       name: companyName,
       rif: RIF,
-      address,
       location,
       IsInNationalTerritory,
     })
