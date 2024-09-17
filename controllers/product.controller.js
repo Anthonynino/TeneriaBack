@@ -1,6 +1,7 @@
 import { productsModel } from '../models/products.model.js'
 import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
 import { sequelize } from '../database/db.js'
+import { Op } from 'sequelize'
 
 //Obtener todos los productos
 export const getAllProducts = async (req, res) => {
@@ -38,9 +39,18 @@ export const getProduct = async (req, res) => {
 
 // Crear un producto
 export const createProduct = async (req, res) => {
+  const transaction = await sequelize.transaction()
   try {
-    const { name, quantity, code, ubication, size, categoryId, supplierId } =
-      req.body
+    const {
+      name,
+      quantity,
+      code,
+      ubication,
+      size,
+      categoryId,
+      supplierId,
+      userId,
+    } = req.body
 
     // Validar que todos los campos requeridos estén presentes
     if (
@@ -56,20 +66,60 @@ export const createProduct = async (req, res) => {
         .json({ message: 'Todos los campos son requeridos' })
     }
 
-    // Crear el nuevo producto
-    const newProduct = await productsModel.create({
-      name,
-      quantity,
-      code,
-      ubication,
-      size,
-      categoryId,
-      supplierId,
+    // Verificar si el nombre o código del producto ya existen
+    const existingProductByName = await productsModel.findOne({
+      where: { name },
     })
+    if (existingProductByName) {
+      return res
+        .status(400)
+        .json({ message: 'El nombre del producto ya está en uso' })
+    }
+
+    const existingProductByCode = await productsModel.findOne({
+      where: { code },
+    })
+    if (existingProductByCode) {
+      return res
+        .status(400)
+        .json({ message: 'El código del producto ya existe' })
+    }
+
+    // Crear el nuevo producto
+    const newProduct = await productsModel.create(
+      {
+        name,
+        quantity,
+        code,
+        ubication,
+        size: size == null ? 'pequeño' : size,
+        categoryId,
+        supplierId,
+      },
+      { transaction }
+    )
+
+    // Registrar el movimiento de creación
+    await inventoryMovementsModel.create(
+      {
+        productId: newProduct.id,
+        quantity: +quantity,
+        movementType: 'Nuevo',
+        movementDate: new Date(),
+        userId,
+        departmentId: null,
+      },
+      { transaction }
+    )
+
+    // Confirmar la transacción
+    await transaction.commit()
 
     // Enviar la respuesta con el nuevo producto creado
     res.json(newProduct)
   } catch (error) {
+    // Revertir la transacción en caso de error
+    await transaction.rollback()
     // Manejo de errores
     res.status(500).json({ message: error.message })
   }
@@ -118,7 +168,7 @@ export const updateStock = async (req, res) => {
     await inventoryMovementsModel.create(
       {
         productId,
-        quantity,
+        quantity: +Math.abs(quantity), //Asegurar que si me envian el valor de la cantidad en negativo poder revertirlo y colocarlo positivo
         movementType,
         movementDate: new Date(),
         userId,
@@ -139,6 +189,78 @@ export const updateStock = async (req, res) => {
     await transaction.rollback()
     // Si hay un error interno del servidor, devolver un error 500
     res.status(500).json({ message: 'Error interno del servidor', error })
+  }
+}
+
+// Función para editar un producto
+export const editProduct = async (req, res) => {
+  const {
+    productId,
+    name,
+    code,
+    ubication,
+    size = null,
+    categoryId,
+    supplierId,
+  } = req.body
+
+  try {
+    // Encuentra el producto por ID
+    const product = await productsModel.findByPk(productId)
+
+    if (!product) {
+      return res.status(404).json({ message: 'Producto no encontrado' })
+    }
+
+    // Validar si el nuevo nombre ya existe (excepto el producto actual)
+    if (name && name !== product.name) {
+      const existingProductByName = await productsModel.findOne({
+        where: {
+          name,
+          categoryId,
+          id: { [Op.ne]: productId }, // Excluir el producto actual
+        },
+      })
+
+      if (existingProductByName) {
+        return res
+          .status(400)
+          .json({ message: 'El nombre del producto ya está en uso' })
+      }
+    }
+
+    // Validar si el nuevo código ya existe (excepto el producto actual)
+    if (code && code !== product.code) {
+      const existingProductByCode = await productsModel.findOne({
+        where: {
+          code,
+          id: { [Op.ne]: productId }, // Excluir el producto actual
+        },
+      })
+
+      if (existingProductByCode) {
+        return res
+          .status(400)
+          .json({ message: 'El código del producto ya existe' })
+      }
+    }
+
+    // Actualiza solo los campos proporcionados
+    const updatedProduct = await product.update({
+      name: name !== undefined ? name : product.name,
+      code: code !== undefined ? code : product.code,
+      ubication: ubication !== undefined ? ubication : product.ubication,
+      size: size !== undefined ? size : product.size,
+      categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+      supplierId: supplierId !== undefined ? supplierId : product.supplierId,
+      date: product.date,
+    })
+
+    // Responde con el producto actualizado
+    res.status(200).json(updatedProduct)
+  } catch (error) {
+    console.error('Error al editar el producto:', error)
+    res.status(500).json({ message: 'Error al editar el producto', error })
   }
 }
 

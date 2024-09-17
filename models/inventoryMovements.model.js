@@ -18,7 +18,7 @@ export const inventoryMovementsModel = sequelize.define(
       allowNull: false,
     },
     movementType: {
-      type: DataTypes.ENUM('Entrada', 'Salida'),
+      type: DataTypes.ENUM('Entrada', 'Salida', 'Nuevo'),
       allowNull: false,
     },
     movementDate: {
@@ -33,7 +33,7 @@ export const inventoryMovementsModel = sequelize.define(
     departmentId: {
       type: DataTypes.BIGINT,
       allowNull: true,
-    }
+    },
   },
   {
     timestamps: false,
