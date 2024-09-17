@@ -1,12 +1,12 @@
-import Sequelize from 'sequelize' 
+import Sequelize from "sequelize";
 
 export const sequelize = new Sequelize(
-  'teneria', // db name,
-  'postgres', // username
-  'leo2005', // password
+  "teneria", // db name,
+  "postgres", // username
+  "admin", // password
   {
-    host: 'localhost',
-    dialect: 'postgres',
+    host: "localhost",
+    dialect: "postgres",
     logging: false,
   }
-)
+);
