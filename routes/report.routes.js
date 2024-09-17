@@ -8,6 +8,6 @@ import {
 const router = Router();
 
 router.get("/reportSupplierExcel", authRequire, reportSuppliersExcel);
-router.get("/reportSupplierPDF", reportSuppliersPDF);
+router.get("/reportSupplierPDF", authRequire, reportSuppliersPDF);
 
 export default router;

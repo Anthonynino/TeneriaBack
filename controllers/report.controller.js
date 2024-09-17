@@ -2,7 +2,7 @@ import XlsxPopulate from "xlsx-populate"; //Importacion para usar la libreria qu
 import { suppliersModel } from "../models/suppliers.model.js";
 import PDFDocument from "pdfkit";
 import fs from "fs";
-import { error } from "console";
+import path from "path";
 
 export const reportSuppliersExcel = async (req, res) => {
   try {
@@ -12,7 +12,6 @@ export const reportSuppliersExcel = async (req, res) => {
     });
 
     const workbook = await XlsxPopulate.fromBlankAsync();
-
     const sheet = workbook.sheet(0);
 
     const headers = ["Nombre del proveedor", "RIF", "Ubicacion"];
@@ -25,10 +24,36 @@ export const reportSuppliersExcel = async (req, res) => {
       sheet.cell(rowIndex + 2, 2).value(item.rif);
       sheet.cell(rowIndex + 2, 3).value(item.location);
     });
-    const path = "./reporte.xlsx";
-    await workbook.toFileAsync(path);
-    console.log(`El archivo Excel ha sido guardado en ${path}`);
-    res.json("El reporte se genero con exito");
+
+    // Guardar el archivo temporalmente
+    const currentDate = new Date();
+    const formattedDate = `${currentDate.getFullYear()}-${String(
+      currentDate.getMonth() + 1
+    ).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+    const filePath = path.join(
+      process.cwd(),
+      `reporte_proveedores${formattedDate}.xlsx`
+    ); // process.cwd() para la ruta actual
+    await workbook.toFileAsync(filePath);
+
+    // Configurar encabezados para la descarga
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=reporte_proveedores_${formattedDate}.xlsx`
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    // Enviar el archivo como stream
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    // Eliminar el archivo después de enviarlo
+    fileStream.on("end", () => {
+      fs.unlinkSync(filePath); // Elimina el archivo después de enviarlo
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al generar el reporte" });
