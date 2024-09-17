@@ -48,7 +48,6 @@ export const createProduct = async (req, res) => {
       !quantity ||
       !code ||
       !ubication ||
-      !size ||
       !categoryId ||
       !supplierId
     ) {
