@@ -2,6 +2,7 @@ import XlsxPopulate from "xlsx-populate"; //Importacion para usar la libreria qu
 import { inventoryMovementsModel } from "../models/inventoryMovements.model.js";
 import { productsModel } from "../models/products.model.js";
 import { departmentsModel } from "../models/departments.model.js";
+import { suppliersModel } from "../models/suppliers.model.js";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
