@@ -246,6 +246,9 @@ export const reportProductPDF = async (req, res) => {
     // Paso 5: Enviar el PDF como respuesta
     doc.pipe(res);
 
+    // Añadir logo
+
+    doc.fontSize(14).text("Tenería Rubio C.A", 120, 30, { align: "center" });
     // Paso 6: Agregar un título
     doc.fontSize(18).text("Reporte de Movimientos de Inventario", {
       align: "center",
