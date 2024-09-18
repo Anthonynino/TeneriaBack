@@ -86,6 +86,7 @@ export const reportSuppliersPDF = async (req, res) => {
     doc.pipe(res);
 
     // Paso 6: Agregar un título
+    doc.fontSize(14).text("Tenería Rubio C.A", 120, 30, { align: "center" });
     doc.fontSize(18).text("Reporte de Proveedores", {
       align: "center",
     });
