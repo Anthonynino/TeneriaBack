@@ -7,6 +7,11 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 
+// Función para obtener la ruta absoluta
+const getDirName = () => {
+  return path.resolve();
+};
+
 export const reportSuppliersExcel = async (req, res) => {
   try {
     const suppliers = await suppliersModel.findAll({
@@ -86,33 +91,62 @@ export const reportSuppliersPDF = async (req, res) => {
     // Paso 5: Enviar el PDF como respuesta
     doc.pipe(res);
 
-    // Paso 6: Agregar un título
-    doc.fontSize(14).text("Tenería Rubio C.A", 120, 30, { align: "center" });
-    doc.fontSize(18).text("Reporte de Proveedores", {
-      align: "center",
-    });
+    // Función para truncar el nombre a 25 caracteres
+    const truncateText = (text, maxLength) => {
+      return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+    };
 
-    // Paso 6: Definir los encabezados con coordenadas fijas para cada columna
-    doc.moveDown();
-    doc
-      .fontSize(12)
-      .text("Nombre", 50, 100) // Columna 1: Nombre
-      .text("RIF", 200, 100) // Columna 2: RIF
-      .text("Ubicación", 350, 100); // Columna 3: Ubicación
+    //Ruta para el logo del pdf
+    const logoPath = path.join(getDirName(), 'public', 'logo.png');
+
+    
+
+
+    // Paso 6: Agregar un título y encabezados
+    const addHeaders = () => {
+      doc.image(logoPath, 50, 20, { width: 100 });
+      doc.fontSize(14).text("Tenería Rubio C.A", 120, 30, { align: "center" });
+      doc.fontSize(18).text("Reporte de Proveedores", { align: "center" });
+
+      doc.moveDown();
+      doc
+        .fontSize(12)
+        .text("Nombre", 50, 100) // Columna 1: Nombre
+        .text("RIF", 250, 100) // Columna 2: RIF (más a la derecha)
+        .text("Ubicación", 400, 100); // Columna 3: Ubicación (más a la derecha)
+    };
+
+    addHeaders();
 
     // Paso 7: Insertar los datos con coordenadas fijas para cada columna
     let yPosition = 140; // Posición inicial en el eje Y
-    datos.forEach((item) => {
+    const lineHeight = 60; // Altura de cada fila
+    const maxYPosition = doc.page.height - 50; // Límite inferior de la página
+
+    datos.forEach((item, index) => {
+      // Verificar si estamos cerca del final de la página
+      if (yPosition + lineHeight > maxYPosition) {
+        doc.addPage(); // Añadir una nueva página
+        yPosition = 140; // Reiniciar la posición Y en la nueva página
+        addHeaders(); // Volver a agregar los encabezados en la nueva página
+      }
+
+      // Truncar el nombre si tiene más de 25 caracteres
+      const truncatedName = truncateText(item.name, 30);
+
+      // Insertar los datos de cada proveedor
       doc
-        .text(item.name, 50, yPosition, { width: 100 }) // Columna 1
-        .text(item.rif, 200, yPosition, { width: 100 }) // Columna 2
-        .text(item.location, 350, yPosition, { width: 200 }); // Columna 3
+        .text(truncatedName, 50, yPosition, { width: 180 }) // Columna 1: Nombre (más espacio horizontal)
+        .text(item.rif, 250, yPosition, { width: 100 }) // Columna 2: RIF
+        .text(item.location, 400, yPosition, { width: 150 }); // Columna 3: Ubicación (movida a la derecha)
+
+      // Dibujar una línea debajo de cada fila de datos
       doc
         .moveTo(50, yPosition + 40) // Inicio de la línea (X, Y)
         .lineTo(550, yPosition + 40) // Final de la línea (X, Y)
         .stroke(); // Dibujar la línea
 
-      yPosition += 60; // Moverse hacia abajo en cada iteración
+      yPosition += lineHeight; // Moverse hacia abajo en cada iteración
     });
 
     // Paso 9: Finalizar el PDF
@@ -122,6 +156,7 @@ export const reportSuppliersPDF = async (req, res) => {
     res.status(500).send(`Error generando el archivo PDF: ${error.message}`);
   }
 };
+
 
 //PRODUCTOS
 
@@ -247,9 +282,10 @@ export const reportProductPDF = async (req, res) => {
 
     // Paso 5: Enviar el PDF como respuesta
     doc.pipe(res);
+    const logoPath = path.join(getDirName(), 'public', 'logo.png');
 
     // Añadir logo
-
+    doc.image(logoPath, 50, 20, { width: 100 });
     doc.fontSize(14).text("Tenería Rubio C.A", 120, 30, { align: "center" });
     // Paso 6: Agregar un título
     doc.fontSize(18).text("Reporte de Movimientos de Inventario", {
@@ -266,11 +302,37 @@ export const reportProductPDF = async (req, res) => {
       .text("Fecha", 335, 100) // Columna 4: movementDate
       .text("Departamento", 450, 100); // Columna 5: Nombre del departamento
 
+    // Función para truncar el texto si supera una longitud
+    const truncateText = (text, maxLength) => {
+      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    };
+
     // Paso 8: Insertar los datos con coordenadas fijas para cada columna
     let yPosition = 140; // Posición inicial en el eje Y
+    const pageHeightLimit = doc.page.height - 50; // Límite para el alto de la página, restando un margen
+    const lineHeight = 20; // Altura de cada línea de datos
+
     datos.forEach((item) => {
+      // Verificar si se supera el límite de la página
+      if (yPosition + lineHeight > pageHeightLimit) {
+        doc.addPage(); // Añadir una nueva página
+        yPosition = 100; // Reiniciar la posición Y en la nueva página
+
+        // Repetir los encabezados en la nueva página
+        doc
+          .fontSize(12)
+          .text("Producto", 50, yPosition)
+          .text("Cantidad", 160, yPosition)
+          .text("Tipo", 250, yPosition)
+          .text("Fecha", 335, yPosition)
+          .text("Departamento", 450, yPosition);
+
+        yPosition += 40; // Ajustar la posición Y después de los encabezados
+      }
+
+      // Insertar los datos, truncando el nombre del producto si excede 24 caracteres
       doc
-        .text(item.product.name, 50, yPosition, { width: 100 }) // Columna 1: Nombre del producto
+        .text(truncateText(item.product.name, 24), 50, yPosition, { width: 100 }) // Columna 1: Nombre del producto truncado
         .text(item.quantity, 180, yPosition, { width: 100 }) // Columna 2
         .text(item.movementType, 250, yPosition, { width: 100 }) // Columna 3
 
@@ -285,18 +347,16 @@ export const reportProductPDF = async (req, res) => {
         // Verificación para manejar valores nulos en el nombre del departamento
         .text(
           item.movementDepartment?.name || "Sin Departamento",
-          450,
-          yPosition,
-          { width: 100 }
+          450, yPosition, { width: 100 }
         ); // Columna 5: Nombre del departamento o "Sin Departamento"
 
       // Dibujar una línea debajo de cada fila de datos
       doc
-        .moveTo(50, yPosition + 40) // Inicio de la línea (X, Y)
-        .lineTo(550, yPosition + 40) // Final de la línea (X, Y)
+        .moveTo(50, yPosition + 30) // Inicio de la línea (X, Y)
+        .lineTo(550, yPosition + 30) // Final de la línea (X, Y)
         .stroke(); // Dibujar la línea
 
-      yPosition += 60; // Moverse hacia abajo en cada iteración
+      yPosition += 60; // Aumentar el espacio entre las filas
     });
 
     // Paso 9: Finalizar el documento
