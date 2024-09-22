@@ -3,7 +3,7 @@ import Sequelize from "sequelize";
 export const sequelize = new Sequelize(
   "teneria", // db name,
   "postgres", // username
-  "admin", // password
+  "leo2005", // password
   {
     host: "localhost",
     dialect: "postgres",
