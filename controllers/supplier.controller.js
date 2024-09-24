@@ -37,13 +37,13 @@ export const getOneSupplier = async (req, res) => {
 export const createNewSupplier = async (req, res) => {
   try {
     const { companyName, RIF, location, IsInNationalTerritory } = req.body
+    console.log("valores: " + companyName, RIF, location, IsInNationalTerritory)
 
     // Validar que todos los campos requeridos estén presentes
     if (
       !companyName ||
       !RIF ||
-      !location ||
-      IsInNationalTerritory === undefined
+      !location 
     ) {
       return res
         .status(400)
