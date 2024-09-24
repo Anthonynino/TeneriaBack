@@ -15,7 +15,8 @@ export const getAllSuppliers = async (req, res) => {
 
 export const getOneSupplier = async (req, res) => {
   try {
-    const { supplierId } = req.body
+    const { supplierId } = req.params
+    console.log(supplierId)
     const supplier = await suppliersModel.findOne({
       where: {
         id: supplierId,

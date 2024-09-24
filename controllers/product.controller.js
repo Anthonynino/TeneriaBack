@@ -251,7 +251,6 @@ export const editProduct = async (req, res) => {
       code: code !== undefined ? code : product.code,
       ubication: ubication !== undefined ? ubication : product.ubication,
       size: size !== undefined ? size : product.size,
-      categoryId: categoryId !== undefined ? categoryId : product.categoryId,
       supplierId: supplierId !== undefined ? supplierId : product.supplierId,
       date: product.date,
     })
