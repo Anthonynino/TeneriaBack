@@ -126,7 +126,7 @@ export const createProduct = async (req, res) => {
 }
 
 // Aumentar o disminuir el stock de un producto
-export const updateStock = async (req, res) => {
+export const generateEntryOrExit = async (req, res) => {
   const transaction = await sequelize.transaction()
   try {
     const { productId, quantity, userId, departmentId, movementType } = req.body

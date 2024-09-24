@@ -4,12 +4,14 @@ import {
   getAllSuppliers,
   createNewSupplier,
   getOneSupplier,
+  editSupplier,
 } from '../controllers/supplier.controller.js'
 
 const router = Router()
 
 router.get('/suppliers', authRequire, getAllSuppliers)
-router.post('/supplier', authRequire, getOneSupplier)
-router.get('/createSupplier', authRequire, createNewSupplier)
+router.post('/supplier/:supplierId', authRequire, getOneSupplier)
+router.post('/createSupplier', authRequire, createNewSupplier)
+router.put('/editSupplier', authRequire, editSupplier)
 
 export default router
