@@ -14,5 +14,5 @@ router.get("/products/:categoryId", authRequire, getAllProducts);
 router.get("/products/:id", authRequire, getProduct);
 router.post("/createProduct", authRequire, createProduct);
 router.post("/updateProduct", authRequire, updateStock);
-router.delete("/products/:id", authRequire, deleteProduct);
+router.delete("/product/:id", authRequire, deleteProduct);
 export default router;
