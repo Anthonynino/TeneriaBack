@@ -12,7 +12,7 @@ import {
 const router = Router()
 
 router.get('/products/:categoryId', authRequire, getAllProducts)
-router.get('/products/:id', authRequire, getProduct)
+router.get('/product/:id', authRequire, getProduct)
 router.post('/createProduct', authRequire, createProduct)
 router.post('/generateEntryOrExit', generateEntryOrExit)
 router.put('/editProduct', authRequire, editProduct)
