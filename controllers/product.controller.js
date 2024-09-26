@@ -1,5 +1,6 @@
 import { productsModel } from '../models/products.model.js'
 import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
+import { suppliersModel } from '../models/suppliers.model.js'
 import { sequelize } from '../database/db.js'
 import { Op } from 'sequelize'
 
@@ -10,6 +11,13 @@ export const getAllProducts = async (req, res) => {
     const products = await productsModel.findAll({
       where: { categoryId, status: 1 },
       order: [['id', 'ASC']],
+      include: [
+        {
+          model: suppliersModel,
+          as: 'supplier',
+          attributes: ['name'],
+        },
+      ],
     })
     res.json(products)
   } catch (error) {
