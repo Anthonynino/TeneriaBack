@@ -10,7 +10,7 @@ import {
 const router = Router()
 
 router.get('/suppliers', authRequire, getAllSuppliers)
-router.post('/supplier/:supplierId', authRequire, getOneSupplier)
+router.get('/supplier/:supplierId', authRequire, getOneSupplier)
 router.post('/createSupplier', authRequire, createNewSupplier)
 router.put('/editSupplier', authRequire, editSupplier)
 

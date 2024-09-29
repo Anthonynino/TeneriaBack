@@ -15,7 +15,7 @@ export const getAllSuppliers = async (req, res) => {
 
 export const getOneSupplier = async (req, res) => {
   try {
-    const { supplierId } = req.body
+    const { supplierId } = req.params
     const supplier = await suppliersModel.findOne({
       where: {
         id: supplierId,
@@ -98,6 +98,7 @@ export const editSupplier = async (req, res) => {
     // Responde con el proveedor actualizado
     res.status(200).json(updatedSupplier);
   } catch (error) {
+    console.log(error)
     console.error('Error al editar el proveedor:', error);
     res.status(500).json({ message: 'Error al editar el proveedor', error });
   }
