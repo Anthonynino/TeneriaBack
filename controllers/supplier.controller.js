@@ -15,7 +15,7 @@ export const getAllSuppliers = async (req, res) => {
 
 export const getOneSupplier = async (req, res) => {
   try {
-    const { supplierId } = req.body
+    const { supplierId } = req.params
     const supplier = await suppliersModel.findOne({
       where: {
         id: supplierId,
@@ -78,27 +78,30 @@ export const createNewSupplier = async (req, res) => {
 
 // Función para editar un proveedor
 export const editSupplier = async (req, res) => {
-  const { supplierId, companyName, location, IsInNationalTerritory } = req.body;
+  const { supplierId, companyName, location, IsInNationalTerritory } = req.body
 
   try {
     // Encuentra el proveedor por ID
-    const supplier = await suppliersModel.findByPk(supplierId);
+    const supplier = await suppliersModel.findByPk(supplierId)
 
     if (!supplier) {
-      return res.status(404).json({ message: 'Proveedor no encontrado' });
+      return res.status(404).json({ message: 'Proveedor no encontrado' })
     }
 
     // Actualiza solo los campos proporcionados
     const updatedSupplier = await supplier.update({
       name: companyName !== undefined ? companyName : supplier.name,
       location: location !== undefined ? location : supplier.location,
-      IsInNationalTerritory: IsInNationalTerritory !== undefined ? IsInNationalTerritory : supplier.IsInNationalTerritory,
-    });
+      IsInNationalTerritory:
+        IsInNationalTerritory !== undefined
+          ? IsInNationalTerritory
+          : supplier.IsInNationalTerritory,
+    })
 
     // Responde con el proveedor actualizado
-    res.status(200).json(updatedSupplier);
+    res.status(200).json(updatedSupplier)
   } catch (error) {
-    console.error('Error al editar el proveedor:', error);
-    res.status(500).json({ message: 'Error al editar el proveedor', error });
+    console.error('Error al editar el proveedor:', error)
+    res.status(500).json({ message: 'Error al editar el proveedor', error })
   }
-};
+}
