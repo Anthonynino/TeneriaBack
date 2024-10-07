@@ -1,18 +1,17 @@
-import { Router } from "express";
-import { authRequire } from "../middlewares/validate.Token.js";
+import { Router } from 'express'
+import { authRequire } from '../middlewares/validate.Token.js'
 import {
   reportSuppliersPDF,
   reportSuppliersExcel,
   reportProductExcel,
   reportProductPDF,
-} from "../controllers/report.controller.js";
+} from '../controllers/report.controller.js'
 
-const router = Router();
+const router = Router()
 
-router.get("/reportSupplierExcel", authRequire, reportSuppliersExcel);
-router.get("/reportSupplierPDF", authRequire, reportSuppliersPDF);
+router.get('/reportSupplierExcel/:usuarioId', authRequire, reportSuppliersExcel)
+router.get('/reportSupplierPDF/:usuarioId', authRequire, reportSuppliersPDF)
+router.get('/reportProductExcel/:usuarioId', authRequire, reportProductExcel)
+router.get('/reportProductPDF/:usuarioId', authRequire, reportProductPDF)
 
-router.get("/reportProductExcel", authRequire, reportProductExcel);
-router.get("/reportProductPDF", authRequire, reportProductPDF);
-
-export default router;
+export default router

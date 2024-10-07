@@ -12,20 +12,20 @@ export const reportModel = sequelize.define(
     },
     filePath: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     generatedDate: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
       defaultValue: Sequelize.NOW,
     },
     startDate: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     endDate: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     userId: {
       type: DataTypes.BIGINT,
