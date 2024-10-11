@@ -10,7 +10,7 @@ export const getAllProducts = async (req, res) => {
   try {
     const products = await productsModel.findAll({
       where: { categoryId, status: 1 },
-      order: [['id', 'ASC']],
+      order: [['code', 'ASC']],
       include: [
         {
           model: suppliersModel,
@@ -51,19 +51,16 @@ export const createProduct = async (req, res) => {
   try {
     const {
       name,
-      quantity,
       code,
       ubication,
-      size,
+      specifications,
       categoryId,
       supplierId,
-      userId,
     } = req.body
 
     // Validar que todos los campos requeridos estén presentes
     if (
       !name ||
-      !quantity ||
       !code ||
       !ubication ||
       !categoryId ||
@@ -97,29 +94,15 @@ export const createProduct = async (req, res) => {
     const newProduct = await productsModel.create(
       {
         name,
-        quantity,
+        quantity: 0,
         code,
         ubication,
-        size: size == null ? 'pequeño' : size,
+        specifications: specifications == null ? '' : specifications,
         categoryId,
         supplierId,
       },
       { transaction }
     )
-
-    // Registrar el movimiento de creación
-    await inventoryMovementsModel.create(
-      {
-        productId: newProduct.id,
-        quantity: +quantity,
-        movementType: 'Nuevo',
-        movementDate: new Date(),
-        userId,
-        departmentId: null,
-      },
-      { transaction }
-    )
-
     // Confirmar la transacción
     await transaction.commit()
 

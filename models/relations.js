@@ -6,6 +6,7 @@ import { inventoryMovementsModel } from './inventoryMovements.model.js'
 import { suppliersModel } from './suppliers.model.js'
 import { departmentsModel } from './departments.model.js'
 import { reportModel } from './reports.model.js'
+import { movementProductsModel } from './movement_products.js'
 
 // Define la relación entre un Usuario y un Rol
 userModel.belongsTo(rolModel, {
@@ -25,16 +26,6 @@ productsModel.belongsTo(categoryModel, {
 categoryModel.hasMany(productsModel, {
   foreignKey: 'categoryId',
   as: 'categoryProducts',
-})
-
-// Define la relación entre un Movimiento de Inventario y un Producto
-inventoryMovementsModel.belongsTo(productsModel, {
-  foreignKey: 'productId',
-  as: 'product',
-})
-productsModel.hasMany(inventoryMovementsModel, {
-  foreignKey: 'productId',
-  as: 'inventoryMovements',
 })
 
 // Define la relación entre un Movimiento de Inventario y un Usuario
@@ -62,21 +53,42 @@ suppliersModel.hasMany(productsModel, {
 //Define las relaciones entre un movimiento de invetario y un departamento
 inventoryMovementsModel.belongsTo(departmentsModel, {
   foreignKey: 'departmentId',
-  as: 'movementDepartment'
+  as: 'movementDepartment',
 })
 
 departmentsModel.hasMany(inventoryMovementsModel, {
   foreignKey: 'departmentId',
-  as: 'departmentInventory'
+  as: 'departmentInventory',
 })
 
 //Definir relaciones de un usuario con el reporte
 reportModel.belongsTo(userModel, {
   foreignKey: 'userId',
-  as: 'reportUser'
+  as: 'reportUser',
 })
 
 userModel.hasMany(reportModel, {
   foreignKey: 'userId',
-  as: 'usersReports'
+  as: 'usersReports',
+})
+
+// Relacion entre el movimiento del inventario y el movimiento del producto
+inventoryMovementsModel.hasMany(movementProductsModel, {
+  foreignKey: 'movementId',
+  as: 'inventoryMovementProduct',
+})
+
+movementProductsModel.belongsTo(inventoryMovementsModel, {
+  foreignKey: 'movementId',
+  as: 'movementProductInventory',
+})
+
+// Define la relación entre un Movimiento de Inventario y un Producto
+movementProductsModel.belongsTo(productsModel, {
+  foreignKey: 'productId',
+  as: 'product',
+})
+productsModel.hasMany(movementProductsModel, {
+  foreignKey: 'productId',
+  as: 'productsMovements',
 })

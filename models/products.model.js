@@ -23,7 +23,7 @@ export const productsModel = sequelize.define('products', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  size: {
+  specifications: {
     type: DataTypes.STRING,
     allowNull: true,
   },

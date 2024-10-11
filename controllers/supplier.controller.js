@@ -1,4 +1,5 @@
 import { suppliersModel } from '../models/suppliers.model.js'
+import { Op } from 'sequelize'
 
 // Obtiene todos los proveedores
 export const getAllSuppliers = async (req, res) => {
@@ -35,13 +36,15 @@ export const getOneSupplier = async (req, res) => {
 // Función para crear un nuevo proveedor
 export const createNewSupplier = async (req, res) => {
   try {
-    const { companyName, RIF, location, IsInNationalTerritory } = req.body
+    const { companyName, rif, location, fullCode, IsInNationalTerritory } =
+      req.body
 
     // Validar que todos los campos requeridos estén presentes
     if (
       !companyName ||
-      !RIF ||
+      !rif ||
       !location ||
+      !fullCode ||
       IsInNationalTerritory === undefined
     ) {
       return res
@@ -51,7 +54,7 @@ export const createNewSupplier = async (req, res) => {
 
     // Validar que no exista un proveedor con el mismo RIF
     const existingSupplierByRIF = await suppliersModel.findOne({
-      where: { rif: RIF },
+      where: { rif },
     })
 
     if (existingSupplierByRIF) {
@@ -60,10 +63,22 @@ export const createNewSupplier = async (req, res) => {
         .json({ message: 'Ya existe un proveedor con ese RIF' })
     }
 
+    // Validar que no exista un proveedor con el mismo fullCode
+    const existingSupplierByCode = await suppliersModel.findOne({
+      where: { code: fullCode },
+    })
+
+    if (existingSupplierByCode) {
+      return res
+        .status(400)
+        .json({ message: 'Ya existe un proveedor con ese código' })
+    }
+
     // Crear el nuevo proveedor
     const newSupplier = await suppliersModel.create({
       name: companyName,
-      rif: RIF,
+      rif,
+      code: fullCode,
       location,
       IsInNationalTerritory,
     })
@@ -78,7 +93,16 @@ export const createNewSupplier = async (req, res) => {
 
 // Función para editar un proveedor
 export const editSupplier = async (req, res) => {
-  const { supplierId, companyName, location, IsInNationalTerritory } = req.body
+  const {
+    supplierId,
+    companyName,
+    location,
+    IsInNationalTerritory,
+    finalCode,
+  } = req.body
+
+  
+  console.log('Valor del codigo completo: ' + finalCode)
 
   try {
     // Encuentra el proveedor por ID
@@ -86,6 +110,20 @@ export const editSupplier = async (req, res) => {
 
     if (!supplier) {
       return res.status(404).json({ message: 'Proveedor no encontrado' })
+    }
+
+    // Verificar si el código ya existe en otros proveedores
+    const existingSupplier = await suppliersModel.findOne({
+      where: {
+        code: finalCode,
+        id: { [Op.ne]: supplierId }, // Excluir el proveedor actual
+      },
+    })
+
+    if (existingSupplier) {
+      return res
+        .status(400)
+        .json({ message: 'El código ya está asociado a otro proveedor.' })
     }
 
     // Actualiza solo los campos proporcionados
@@ -96,6 +134,7 @@ export const editSupplier = async (req, res) => {
         IsInNationalTerritory !== undefined
           ? IsInNationalTerritory
           : supplier.IsInNationalTerritory,
+      code: finalCode, // Asegúrate de actualizar el código aquí
     })
 
     // Responde con el proveedor actualizado
