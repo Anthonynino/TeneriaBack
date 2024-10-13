@@ -1,13 +1,15 @@
-import XlsxPopulate from 'xlsx-populate' //Importacion para usar la libreria que permite generar los reportes en excel
 import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
 import { productsModel } from '../models/products.model.js'
 import { departmentsModel } from '../models/departments.model.js'
+import { movementProductsModel } from '../models/movement_products.js'
 import { suppliersModel } from '../models/suppliers.model.js'
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
 import { reportModel } from '../models/reports.model.js'
 import { Sequelize } from 'sequelize'
+import ExcelJS from 'exceljs'
+import moment from 'moment'
 
 // Función para obtener la ruta absoluta
 const getDirName = () => {
@@ -20,48 +22,85 @@ export const reportSuppliersExcel = async (req, res) => {
 
     // Obtener datos de proveedores activos
     const suppliers = await suppliersModel.findAll({
-      attributes: ['name', 'rif', 'location'],
+      attributes: ['name', 'rif', 'code', 'location'],
       where: { status: 1 },
     })
 
-    // Crear el archivo Excel desde cero
-    const workbook = await XlsxPopulate.fromBlankAsync()
-    const sheet = workbook.sheet(0)
+    // Crear un nuevo workbook y agregar una hoja
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet('Proveedores')
 
-    // Definir los encabezados
-    const headers = ['Nombre del proveedor', 'RIF', 'Ubicación']
-    headers.forEach((header, index) => {
-      sheet.cell(1, index + 1).value(header)
+    // Agregar el logo de Tenería Rubio
+    const logoPath = path.join(getDirName(), 'public', 'logo.png')
+    const logoBuffer = fs.readFileSync(logoPath)
+    const logoImage = workbook.addImage({
+      buffer: logoBuffer,
+      extension: 'png',
     })
 
-    // Estilos para el encabezado
-    const headerStyle = {
-      fill: { type: 'solid', color: { rgb: 'D9D9D9' } },
-      border: {
-        top: { style: 'thin' },
-        bottom: { style: 'thin' },
-        left: { style: 'thin' },
-        right: { style: 'thin' },
-      },
-      fontFamily: 'Arial',
-      bold: true,
+    // Centrar el logo en las columnas A hasta C, ocupando la altura de las filas 1 a 6
+    sheet.mergeCells('A1:C6') // Unir celdas de A1 a C6
+    sheet.getCell('A1').value = '' // Limpiar la celda A1 para asegurar que el logo esté vacío
+
+    // Agregar la imagen en el área unida
+    sheet.addImage(logoImage, {
+      tl: { col: 0, row: 0 }, // Top left (A1)
+      ext: { width: 300, height: 120 }, // Ajusta el tamaño de la imagen
+    })
+
+    // Especificaciones de Tenería Rubio (colocadas debajo del logo)
+    sheet.getCell('A7').value = 'Tenería Rubio CA'
+    sheet.getCell('A8').value = 'Dirección: Avenida 1 Con Calle 10'
+    sheet.getCell('A9').value = 'Tel: 027-67621555'
+    sheet.getCell('A10').value = 'Correo: teneriaRubio@gmail.com'
+
+    // Ajustar el formato de la información
+    for (let i = 7; i <= 10; i++) {
+      const cell = sheet.getCell(`A${i}`)
+      cell.font = { name: 'Arial', size: 12 }
+      cell.alignment = { horizontal: 'center' } // Alineación centrada
     }
 
+    // Dejar un espacio entre la información de la empresa y la tabla
+    sheet.getRow(11).height = 20 // Ajustar la altura de la fila 11 para dejar espacio
+
+    // Definir los encabezados de los proveedores
+    const headers = ['Nombre del proveedor', 'RIF', 'Codigo', 'Ubicación']
+    sheet.addRow(headers) // Agregar encabezados directamente
+
+    // Aplicar estilo a los encabezados
     headers.forEach((header, index) => {
-      sheet.cell(1, index + 1).style(headerStyle)
+      const cell = sheet.getCell(12, index + 1) // Cambiar a la fila 12 para los encabezados
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'D9D9D9' },
+      }
+      cell.font = { bold: true, name: 'Arial' }
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      }
+      cell.alignment = { horizontal: 'center' } // Centrar encabezados
     })
 
     // Rellenar los datos de proveedores
-    suppliers.forEach((supplier, rowIndex) => {
-      sheet.cell(rowIndex + 2, 1).value(supplier.name)
-      sheet.cell(rowIndex + 2, 2).value(supplier.rif)
-      sheet.cell(rowIndex + 2, 3).value(supplier.location)
+    suppliers.forEach((supplier) => {
+      sheet.addRow([
+        supplier.name,
+        supplier.rif,
+        supplier.code,
+        supplier.location,
+      ])
     })
 
     // Ajustar el ancho de las columnas
-    sheet.column(1).width(35) // Columna A: 'Nombre del proveedor'
-    sheet.column(2).width(20) // Columna B: 'RIF'
-    sheet.column(3).width(30) // Columna C: 'Ubicación'
+    sheet.getColumn(1).width = 35 // Nombre del proveedor
+    sheet.getColumn(2).width = 20 // RIF
+    sheet.getColumn(3).width = 20 //Codigo
+    sheet.getColumn(4).width = 40 // Ubicación
 
     // Generar la fecha actual para nombrar el archivo
     const currentDate = new Date()
@@ -75,16 +114,16 @@ export const reportSuppliersExcel = async (req, res) => {
       `reporte_proveedores_${formattedDate}.xlsx`
     )
 
-    // Guardar el archivo temporalmente
-    await workbook.toFileAsync(filePath)
+    // Escribir el archivo Excel en la ruta temporal
+    await workbook.xlsx.writeFile(filePath)
 
     // Guardar un registro en la base de datos
     await reportModel.create({
       filePath: filePath,
-      startDate: new Date(), // Cambiar según sea necesario
-      endDate: new Date(), // Cambiar según sea necesario
+      startDate: new Date(),
+      endDate: new Date(),
       userId: usuarioId,
-      status: 1, // Estado del reporte (puede ser cambiado)
+      status: 1,
     })
 
     // Configurar las cabeceras para la descarga
@@ -123,12 +162,11 @@ export const reportSuppliersPDF = async (req, res) => {
   try {
     const { usuarioId } = req.params
 
-    // Paso 1: Obtener los datos de la base de datos usando Sequelize
+    // Obtener los datos de la base de datos usando Sequelize
     const datos = await suppliersModel.findAll({
-      attributes: ['name', 'rif', 'location'],
+      attributes: ['name', 'rif', 'code', 'location'],
     })
 
-    // Paso 2: Verifica que haya datos disponibles
     if (!datos || datos.length === 0) {
       throw new Error('No se encontraron datos en la base de datos.')
     }
@@ -143,95 +181,105 @@ export const reportSuppliersPDF = async (req, res) => {
       `reporte_proveedores_${formattedDate}.pdf`
     )
 
-    // Paso 3: Crear un nuevo documento PDF
-    const doc = new PDFDocument()
+    // Crear un nuevo documento PDF
+    const doc = new PDFDocument({
+      margin: 50,
+    })
 
-    // Paso 4: Guardar el archivo temporalmente en el sistema de archivos
+    // Guardar el archivo temporalmente en el sistema de archivos
     doc.pipe(fs.createWriteStream(filePath))
 
-    // Función para truncar el nombre a 25 caracteres
+    // Función para truncar el texto si es demasiado largo
     const truncateText = (text, maxLength) => {
       return text.length > maxLength
         ? text.substring(0, maxLength) + '...'
         : text
     }
 
-    // Ruta para el logo del pdf
+    // Ruta para el logo del pdf y el QR del footer
     const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+    const qrPath = path.join(process.cwd(), 'public', 'qr.png') // Ruta de la imagen del código QR
 
-    // Paso 5: Agregar un título y encabezados
+    // Agregar un título, encabezados y logo movido a la derecha
     const addHeaders = () => {
-      doc.image(logoPath, 50, 20, { width: 100 })
-      doc.fontSize(14).text('Tenería Rubio C.A', 120, 30, { align: 'center' })
-      doc.fontSize(18).text('Reporte de Proveedores', { align: 'center' })
+      doc.image(logoPath, 450, 20, { width: 80 }) // Logo movido a la derecha
+      doc.fontSize(10).text('Tenería Rubio C.A', 50, 30, { align: 'left' }) // Título a la izquierda
+      doc.fontSize(14).text('Reporte de Proveedores', { align: 'center' })
 
       doc.moveDown()
       doc
-        .fontSize(12)
-        .text('Nombre', 50, 100) // Columna 1: Nombre
-        .text('RIF', 250, 100) // Columna 2: RIF (más a la derecha)
-        .text('Ubicación', 400, 100) // Columna 3: Ubicación (más a la derecha)
+        .fontSize(8) // Reducir tamaño de la fuente para los encabezados
+        .text('Nombre', 50, 100) // Columna 1
+        .text('RIF', 200, 100) // Columna 2
+        .text('Codigo', 350, 100) // Columna 3
+        .text('Ubicación', 500, 100) // Columna 4
     }
 
     addHeaders()
 
-    // Paso 6: Insertar los datos con coordenadas fijas para cada columna
+    // Insertar los datos con coordenadas ajustadas
     let yPosition = 140 // Posición inicial en el eje Y
-    const lineHeight = 60 // Altura de cada fila
-    const maxYPosition = doc.page.height - 50 // Límite inferior de la página
+    const lineHeight = 35 // Mayor altura entre filas para más espacio
+    const maxYPosition = doc.page.height - 100 // Ajustar límite para espacio de footer
 
-    datos.forEach((item, index) => {
+    datos.forEach((item) => {
       // Verificar si estamos cerca del final de la página
       if (yPosition + lineHeight > maxYPosition) {
-        doc.addPage() // Añadir una nueva página
-        yPosition = 140 // Reiniciar la posición Y en la nueva página
-        addHeaders() // Volver a agregar los encabezados en la nueva página
+        addFooter(doc, qrPath) // Agregar footer antes de cambiar de página
+        doc.addPage()
+        yPosition = 140
+        addHeaders() // Volver a agregar los encabezados
       }
 
-      // Truncar el nombre si tiene más de 25 caracteres
-      const truncatedName = truncateText(item.name, 30)
+      const truncatedName = truncateText(item.name, 25)
+      const truncatedLocation = truncateText(item.location, 30) // Truncar ubicación
 
-      // Insertar los datos de cada proveedor
+      // Insertar los datos con un tamaño de letra más pequeño
       doc
-        .text(truncatedName, 50, yPosition, { width: 180 }) // Columna 1: Nombre (más espacio horizontal)
-        .text(item.rif, 250, yPosition, { width: 100 }) // Columna 2: RIF
-        .text(item.location, 400, yPosition, { width: 150 }) // Columna 3: Ubicación (movida a la derecha)
+        .fontSize(8) // Reducir tamaño de la fuente para los datos
+        .text(truncatedName, 50, yPosition, { width: 150 }) // Ajustar ancho de columna
+        .text(item.rif, 200, yPosition, { width: 100 }) // Ajustar posición
+        .text(item.code, 350, yPosition, { width: 100 })
+        .text(truncatedLocation, 500, yPosition, { width: 100 })
 
-      // Dibujar una línea debajo de cada fila de datos
+      // Dibujar línea
       doc
-        .moveTo(50, yPosition + 40) // Inicio de la línea (X, Y)
-        .lineTo(550, yPosition + 40) // Final de la línea (X, Y)
-        .stroke() // Dibujar la línea
+        .moveTo(50, yPosition + 20)
+        .lineTo(550, yPosition + 20)
+        .stroke()
 
-      yPosition += lineHeight // Moverse hacia abajo en cada iteración
+      yPosition += lineHeight
     })
 
-    // Paso 7: Finalizar el PDF
+    // Agregar footer en la última página
+    addFooter(doc, qrPath)
+
+    // Finalizar el PDF
     doc.end()
 
-    // Paso 8: Guardar el registro en la base de datos (tabla reports)
+    // Guardar el registro en la base de datos
     await reportModel.create({
       filePath: filePath,
-      startDate: new Date(), // Puedes ajustar las fechas según tu lógica
+      startDate: new Date(),
       endDate: new Date(),
       userId: usuarioId,
-      status: 1, // Estado por defecto
+      status: 1,
     })
 
-    // Paso 9: Configurar la respuesta para descargar el archivo
+    // Configurar la respuesta para descargar el archivo
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte_proveedores_${formattedDate}.pdf"`
     )
     res.setHeader('Content-Type', 'application/pdf')
 
-    // Paso 10: Enviar el archivo PDF como respuesta
+    // Enviar el archivo PDF como respuesta
     const fileStream = fs.createReadStream(filePath)
     fileStream.pipe(res)
 
     // Eliminar el archivo después de enviarlo
     fileStream.on('end', () => {
-      fs.unlinkSync(filePath) // Elimina el archivo después de enviarlo
+      fs.unlinkSync(filePath)
     })
   } catch (error) {
     console.error('Error generando el archivo PDF:', error.message)
@@ -239,57 +287,80 @@ export const reportSuppliersPDF = async (req, res) => {
   }
 }
 
+// Función para agregar el footer con QR y datos de la empresa
+const addFooter = (doc, qrPath) => {
+  const footerY = doc.page.height - 80 // Ajustar posición del footer más arriba
+  const qrSize = 40 // Reducir tamaño del QR para que todo quepa mejor
+
+  // Dibujar línea superior del footer
+  doc
+    .moveTo(50, footerY - 10)
+    .lineTo(550, footerY - 10)
+    .stroke()
+
+  // Insertar el QR a la izquierda
+  doc.image(qrPath, 50, footerY, { width: qrSize })
+
+  // Insertar los datos de la empresa con un tamaño de fuente más pequeño
+  doc
+    .fontSize(7) // Reducir tamaño de fuente
+    .text('Tenería Rubio C.A.', 100, footerY)
+    .text('Dirección: Avenida 1 Con Calle 10', 100, footerY + 7)
+    .text('Teléfono: 027-67621555', 100, footerY + 14)
+    .text('Correo: teneriaRubio@gmail.com', 100, footerY + 21)
+}
+
 //PRODUCTOS
-
-// Asegúrate de tener acceso a los modelos
-// Asegúrate de importar el modelo Product
-
 export const reportProductExcel = async (req, res) => {
   try {
     const { usuarioId } = req.params
     const { startDate, endDate } = req.query
 
-    // Validar que las fechas existan y sean válidas
     if (!startDate || !endDate) {
       return res
         .status(400)
         .json({ message: 'Debe proporcionar fechas de inicio y fin' })
     }
 
-    // Convertir las fechas a objetos Date en JavaScript
     const start = new Date(startDate)
     const end = new Date(endDate)
 
-    // Verificar que las fechas se hayan convertido correctamente
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return res.status(400).json({ message: 'Fechas inválidas' })
     }
 
-    // Sumar 1 día a cada fecha
-    start.setDate(start.getDate() + 1) // Aumenta 1 día a la fecha de inicio
-    end.setDate(end.getDate() + 1) // Aumenta 1 día a la fecha de fin
-
-    // Ajustar a 0 horas para el inicio
-    start.setHours(0, 0, 0, 0) // Desde el comienzo del día
-
-    // Cambiar el fin a las 23:59:59 en el formato deseado
+    start.setDate(start.getDate() + 1) // Ajuste fechas
+    end.setDate(end.getDate() + 1)
+    start.setHours(0, 0, 0, 0)
     const endFormatted = `${end.getFullYear()}-${String(
       end.getMonth() + 1
     ).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
 
-    // Buscar movimientos de inventario dentro del rango de fechas
+    // Consultar movimientos de inventario y productos relacionados
     const movements = await inventoryMovementsModel.findAll({
-      attributes: ['quantity', 'movementType', 'movementDate'],
+      attributes: [
+        'id',
+        'movementType',
+        'description',
+        'movementDate',
+        'recipientName',
+      ],
       include: [
         {
-          model: productsModel,
-          as: 'product', // Especificar el alias correcto
-          attributes: ['name'], // Solo traer el nombre del producto
+          model: movementProductsModel,
+          as: 'inventoryMovementProduct',
+          include: [
+            {
+              model: productsModel,
+              as: 'product',
+              attributes: ['name'],
+            },
+          ],
         },
         {
           model: departmentsModel,
-          as: 'movementDepartment', // Alias para el modelo de departamentos
-          attributes: ['name'], // Traer solo el nombre del departamento
+          as: 'movementDepartment',
+          attributes: ['name'],
         },
       ],
       where: Sequelize.literal(
@@ -297,7 +368,6 @@ export const reportProductExcel = async (req, res) => {
       ),
     })
 
-    // Verificar si hay registros
     if (movements.length === 0) {
       return res.status(404).json({
         message:
@@ -305,58 +375,109 @@ export const reportProductExcel = async (req, res) => {
       })
     }
 
-    const workbook = await XlsxPopulate.fromBlankAsync()
-    const sheet = workbook.sheet(0)
+    // Inicializar el workbook
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet('Reporte de Productos')
 
-    // Estilos para el encabezado
+    // Agregar el logo de Tenería Rubio
+    const logoPath = path.join(getDirName(), 'public', 'logo.png')
+    const logoBuffer = fs.readFileSync(logoPath)
+
+    // Agregar la imagen
+    const logoImageId = workbook.addImage({
+      buffer: logoBuffer,
+      extension: 'png',
+    })
+
+    // Centrar el logo en las columnas A hasta C, ocupando la altura de las filas 1 a 6
+    sheet.mergeCells('A1:C6') // Unir celdas de A1 a C6
+    sheet.getCell('A1').value = '' // Limpiar la celda A1 para asegurar que el logo esté vacío
+
+    // Agregar la imagen en el área unida
+    sheet.addImage(logoImageId, {
+      tl: { col: 0, row: 0 }, // Top left (A1)
+      ext: { width: 300, height: 100 }, // Ajusta el tamaño de la imagen
+    })
+
+    // Especificaciones de Tenería Rubio (colocadas debajo del logo)
+    sheet.getCell('A5').value = 'Tenería Rubio CA' // Cambié a A5
+    sheet.getCell('A6').value = 'Dirección: Avenida 1 Con Calle 10' // Cambié a A6
+    sheet.getCell('A7').value = 'Tel: 027-67621555' // Cambié a A7
+    sheet.getCell('A8').value = 'Correo: teneriaRubio@gmail.com' // Cambié a A8
+
     const headerStyle = {
-      fill: { type: 'solid', color: { rgb: 'D9D9D9' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9D9D9' } },
       border: {
         top: { style: 'thin' },
         bottom: { style: 'thin' },
         left: { style: 'thin' },
         right: { style: 'thin' },
       },
-      fontFamily: 'Arial',
-      bold: true,
+      font: {
+        name: 'Arial',
+        bold: true,
+      },
     }
 
     const headers = [
-      'Producto',
-      'Cantidad',
-      'Tipo de movimiento',
+      'Tipo de Movimiento',
       'Fecha',
-      'DepartamentoDestino',
+      'Responsable',
+      'Productos Movidos',
+      'Departamento Destino',
+      'Descripción de Movimiento',
     ]
 
     headers.forEach((header, index) => {
-      sheet
-        .cell(1, index + 1)
-        .value(header)
-        .style(headerStyle)
+      sheet.getCell(9, index + 1).value = header // Comenzar en la fila 9 para los encabezados
+      sheet.getCell(9, index + 1).style = headerStyle
     })
 
     movements.forEach((item, rowIndex) => {
-      sheet.cell(rowIndex + 2, 1).value(item.product.name || 'Sin nombre')
-      sheet.cell(rowIndex + 2, 2).value(item.quantity || 0)
-      sheet.cell(rowIndex + 2, 3).value(item.movementType || 'Sin tipo')
+      const row = rowIndex + 10 // Comenzar a llenar datos desde la fila 10
+
+      sheet.getCell(row, 1).value = item.movementType || 'Sin tipo'
 
       const formattedDate = new Date(item.movementDate).toLocaleDateString(
         'es-ES'
       )
-      sheet.cell(rowIndex + 2, 4).value(formattedDate || 'Fecha no válida')
+      sheet.getCell(row, 2).value = formattedDate || 'Fecha no válida'
 
-      const departmentName = item.movementDepartment
-        ? item.movementDepartment.name
-        : 'Sin departamento'
-      sheet.cell(rowIndex + 2, 5).value(departmentName)
+      sheet.getCell(row, 3).value = item.recipientName || 'Sin responsable'
+
+      // Procesar lista de productos movidos
+      const productsList =
+        Array.isArray(item.inventoryMovementProduct) &&
+        item.inventoryMovementProduct.length > 0
+          ? item.inventoryMovementProduct
+              .map((pm) => `${pm.product.name} (Cantidad: ${pm.quantity})`)
+              .join(', ')
+          : 'No hay productos'
+
+      sheet.getCell(row, 4).value = productsList
+
+      // Manejar el nombre del departamento
+      const departmentName =
+        item.movementType === 'Entrada'
+          ? 'Almacén' // Nombre estático para entradas
+          : item.movementDepartment
+          ? item.movementDepartment.name
+          : 'Sin departamento'
+
+      sheet.getCell(row, 5).value = departmentName
+
+      // Asegurarse de que 'item' esté definido antes de acceder a 'description'
+      sheet.getCell(row, 6).value =
+        item.description || 'Se han ingresado productos al inventario.'
     })
 
-    sheet.column(1).width(30) // Columna A para 'Producto'
-    sheet.column(2).width(15) // Columna B para 'Cantidad'
-    sheet.column(3).width(25) // Columna C para 'Tipo de movimiento'
-    sheet.column(4).width(15) // Columna D para 'Fecha'
-    sheet.column(5).width(25) // Columna E para 'DepartamentoDestino'
+    // Ajustes de tamaño de columna
+    sheet.getColumn(1).width = 20 // Tipo
+    sheet.getColumn(2).width = 25 // Fecha
+    sheet.getColumn(3).width = 25 // Responsable
+    sheet.getColumn(4).width = 40 // Productos Movidos
+    sheet.getColumn(5).width = 25 // Departamento
+    sheet.getColumn(6).width = 60 // Descripción
 
     const currentDate = new Date()
     const formattedDate = `${currentDate.getFullYear()}-${String(
@@ -366,15 +487,15 @@ export const reportProductExcel = async (req, res) => {
       process.cwd(),
       `reporte_productos_${formattedDate}.xlsx`
     )
-    await workbook.toFileAsync(filePath)
 
-    // Guardar registro en la base de datos (tabla reports)
+    await workbook.xlsx.writeFile(filePath)
+
     await reportModel.create({
       filePath: filePath,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       userId: usuarioId,
-      status: 1, // Estado por defecto, podrías modificarlo según tu lógica
+      status: 1,
     })
 
     res.setHeader(
@@ -398,97 +519,106 @@ export const reportProductExcel = async (req, res) => {
   }
 }
 
-//PDF REPORTE PRODUCTOS
+// PDF REPORTE PRODUCTOS
 export const reportProductPDF = async (req, res) => {
   try {
     const { usuarioId } = req.params
     const { startDate, endDate } = req.query
 
-    // Validar que las fechas existan y sean válidas
+    // Validar que las fechas de inicio y fin se proporcionen
     if (!startDate || !endDate) {
       return res
         .status(400)
         .json({ message: 'Debe proporcionar fechas de inicio y fin' })
     }
 
-    // Convertir las fechas a objetos Date en JavaScript
-    const start = new Date(startDate)
-    const end = new Date(endDate)
+    // Convertir las fechas de inicio y fin a objetos de fecha
+    const start = moment(startDate, 'YYYY-MM-DD', true)
+    const end = moment(endDate, 'YYYY-MM-DD', true)
 
-    // Verificar que las fechas se hayan convertido correctamente
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    // Validar que las fechas sean válidas
+    if (!start.isValid() || !end.isValid()) {
       return res.status(400).json({ message: 'Fechas inválidas' })
     }
 
-    // Sumar 1 día a cada fecha
-    start.setDate(start.getDate() + 1) // Aumenta 1 día a la fecha de inicio
-    end.setDate(end.getDate() + 1) // Aumenta 1 día a la fecha de fin
+    // Ajustar las fechas para incluir el final del día
+    const adjustedStart = start.startOf('day').toISOString()
+    const adjustedEnd = end.endOf('day').toISOString()
 
-    // Ajustar a 0 horas para el inicio
-    start.setHours(0, 0, 0, 0) // Desde el comienzo del día
-
-    // Cambiar el fin a las 23:59:59 en el formato deseado
-    const endFormatted = `${end.getFullYear()}-${String(
-      end.getMonth() + 1
-    ).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
-
-    // Paso 1: Obtener los datos de la base de datos usando Sequelize
-    const datos = await inventoryMovementsModel.findAll({
-      attributes: ['quantity', 'movementType', 'movementDate'],
+    // Consultar movimientos de inventario y productos relacionados
+    const movements = await inventoryMovementsModel.findAll({
+      attributes: [
+        'id',
+        'movementType',
+        'description',
+        'movementDate',
+        'recipientName',
+      ],
       include: [
         {
-          model: productsModel,
-          as: 'product',
-          attributes: ['name'], // Obtener el nombre del producto
+          model: movementProductsModel,
+          as: 'inventoryMovementProduct',
+          include: [
+            {
+              model: productsModel,
+              as: 'product',
+              attributes: ['name'],
+            },
+          ],
         },
         {
           model: departmentsModel,
-          as: 'movementDepartment', // Alias del departamento
-          attributes: ['name'], // Obtener el nombre del departamento
+          as: 'movementDepartment',
+          attributes: ['name'],
         },
       ],
-      where: Sequelize.literal(
-        `"movementDate" >= '${start.toISOString()}' AND "movementDate" <= '${endFormatted}'`
-      ),
+      where: {
+        movementDate: {
+          [Sequelize.Op.between]: [adjustedStart, adjustedEnd],
+        },
+      },
     })
 
-    // Paso 2: Verifica que haya datos disponibles
-    if (!datos || datos.length === 0) {
-      throw new Error('No se encontraron datos en la base de datos.')
+    if (movements.length === 0) {
+      return res.status(404).json({
+        message:
+          'No se encontraron registros en el rango de fechas seleccionado.',
+      })
     }
 
-    // Paso 3: Configurar la respuesta para descargar el archivo
+    // Crear un nuevo documento PDF
+    const doc = new PDFDocument({ margin: 20 }) // Reducir margen
+    const logoPath = path.join(getDirName(), 'public', 'logo.png')
+    const qrPath = path.join(getDirName(), 'public', 'qr.png') // Asegúrate de que la ruta del QR sea correcta
+
+    // Configurar la respuesta para descargar el archivo
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="reporte_movimientos.pdf"'
     )
     res.setHeader('Content-Type', 'application/pdf')
 
-    // Paso 4: Crear un nuevo documento PDF
-    const doc = new PDFDocument()
-
-    // Paso 5: Enviar el PDF como respuesta
+    // Enviar el PDF como respuesta
     doc.pipe(res)
-    const logoPath = path.join(getDirName(), 'public', 'logo.png')
 
     // Añadir logo
-    doc.image(logoPath, 50, 20, { width: 100 })
-    doc.fontSize(14).text('Tenería Rubio C.A', 120, 30, { align: 'center' })
+    doc.image(logoPath, 50, 20, { width: 80 }) // Ajustar tamaño del logo
+    doc.fontSize(12).text('Tenería Rubio C.A', 120, 30, { align: 'center' })
 
-    // Paso 6: Agregar un título
+    // Agregar un título
     doc
-      .fontSize(18)
+      .fontSize(16)
       .text('Reporte de Movimientos de Inventario', { align: 'center' })
 
-    // Paso 7: Definir los encabezados con coordenadas fijas para cada columna
+    // Definir los encabezados
     doc.moveDown()
     doc
-      .fontSize(12)
-      .text('Producto', 50, 100)
-      .text('Cantidad', 160, 100)
-      .text('Tipo', 250, 100)
-      .text('Fecha', 335, 100)
-      .text('Departamento', 450, 100)
+      .fontSize(10) // Reducir tamaño de fuente
+      .text('Tipo', 50, 100, { width: 60 }) // Ajustar ancho
+      .text('Descripción', 110, 100, { width: 150 }) // Ajustar ancho
+      .text('Fecha', 260, 100, { width: 60 }) // Ajustar ancho
+      .text('Departamento', 320, 100, { width: 100 }) // Ajustar ancho
+      .text('Nombre del Destinatario', 420, 100, { width: 100 }) // Ajustar ancho
 
     // Función para truncar el texto si supera una longitud
     const truncateText = (text, maxLength) => {
@@ -497,69 +627,77 @@ export const reportProductPDF = async (req, res) => {
         : text
     }
 
-    // Paso 8: Insertar los datos
+    // Insertar los datos
     let yPosition = 140
     const pageHeightLimit = doc.page.height - 50
-    const lineHeight = 20
+    const lineHeight = 20 // Reducir altura de línea
+    const maxYPosition = pageHeightLimit - 80 // Límite de posición Y para evitar el footer
 
-    datos.forEach((item) => {
-      if (yPosition + lineHeight > pageHeightLimit) {
+    movements.forEach((item) => {
+      if (yPosition + lineHeight > maxYPosition) {
+        addFooter(doc, qrPath) // Agregar footer antes de cambiar de página
         doc.addPage()
-        yPosition = 100
+        yPosition = 140
         doc
-          .fontSize(12)
-          .text('Producto', 50, yPosition)
-          .text('Cantidad', 160, yPosition)
-          .text('Tipo', 250, yPosition)
-          .text('Fecha', 335, yPosition)
-          .text('Departamento', 450, yPosition)
-        yPosition += 40
+          .fontSize(10)
+          .text('Tipo', 50, yPosition, { width: 60 })
+          .text('Descripción', 110, yPosition, { width: 150 })
+          .text('Fecha', 260, yPosition, { width: 60 })
+          .text('Departamento', 320, yPosition, { width: 100 })
+          .text('Nombre del Destinatario', 420, yPosition, { width: 100 })
+        yPosition += 30
       }
 
       doc
-        .text(truncateText(item.product.name, 24), 50, yPosition, {
-          width: 100,
+        .text(truncateText(item.movementType, 20), 50, yPosition, {
+          width: 60,
         })
-        .text(item.quantity, 180, yPosition, { width: 100 })
-        .text(item.movementType, 250, yPosition, { width: 100 })
+        .text(truncateText(item.description, 30), 110, yPosition, {
+          width: 150,
+        })
         .text(
           new Date(item.movementDate).toLocaleDateString('es-ES'),
-          335,
+          260,
           yPosition,
-          { width: 100 }
+          { width: 60 }
         )
         .text(
           item.movementDepartment?.name || 'Sin Departamento',
-          450,
+          320,
           yPosition,
           { width: 100 }
         )
+        .text(item.recipientName || 'Sin Nombre', 420, yPosition, {
+          width: 100,
+        })
 
+      // Separador entre filas - Ajustar longitud de la línea
       doc
-        .moveTo(50, yPosition + 30)
-        .lineTo(550, yPosition + 30)
+        .moveTo(50, yPosition + lineHeight - 5)
+        .lineTo(570, yPosition + lineHeight - 5)
         .stroke()
-      yPosition += 60
+      yPosition += lineHeight
     })
 
-    // Paso 9: Finalizar el documento
+    // Agregar el footer al final
+    addFooter(doc, qrPath)
+
+    // Finalizar el documento
     doc.end()
 
-    // Definir el filePath del reporte (ajusta según la lógica de tu aplicación)
+    // Guardar el registro en la tabla "reports"
     const filePath = path.join(
       getDirName(),
       'public',
       'reportes',
       `reporte_${Date.now()}.pdf`
     )
-
-    // Paso 10: Guardar el registro en la tabla "reports"
     await reportModel.create({
-      filePath: filePath, // Ruta del archivo PDF guardado
-      startDate: new Date(), // Fecha de creación del reporte
-      endDate: new Date(), // Fecha final del reporte (puedes ajustarla según sea necesario)
-      userId: usuarioId, // ID del usuario que genera el reporte
-      status: 1, // Estado inicial del reporte
+      filePath: filePath,
+      startDate: start,
+      endDate: end,
+      userId: usuarioId,
+      status: 1,
     })
   } catch (error) {
     console.error(error)
