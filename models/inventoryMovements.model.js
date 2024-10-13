@@ -37,7 +37,7 @@ export const inventoryMovementsModel = sequelize.define(
     },
     departmentId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
