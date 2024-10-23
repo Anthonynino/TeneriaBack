@@ -522,55 +522,35 @@ export const reportProductExcel = async (req, res) => {
 // PDF REPORTE PRODUCTOS
 export const reportProductPDF = async (req, res) => {
   try {
-    const { usuarioId } = req.params
     const { startDate, endDate } = req.query
 
-    // Validar que las fechas de inicio y fin se proporcionen
     if (!startDate || !endDate) {
-      return res
-        .status(400)
-        .json({ message: 'Debe proporcionar fechas de inicio y fin' })
+      return res.status(400).json({ message: 'Debe proporcionar fechas de inicio y fin' })
     }
 
-    // Convertir las fechas de inicio y fin a objetos de fecha
     const start = moment(startDate, 'YYYY-MM-DD', true)
     const end = moment(endDate, 'YYYY-MM-DD', true)
 
-    // Validar que las fechas sean válidas
     if (!start.isValid() || !end.isValid()) {
       return res.status(400).json({ message: 'Fechas inválidas' })
     }
 
-    // Ajustar las fechas para incluir el final del día
     const adjustedStart = start.startOf('day').toISOString()
     const adjustedEnd = end.endOf('day').toISOString()
 
-    // Consultar movimientos de inventario y productos relacionados
     const movements = await inventoryMovementsModel.findAll({
       attributes: [
-        'id',
-        'movementType',
-        'description',
-        'movementDate',
-        'recipientName',
+        'id', 'movementType', 'movementDate', 'recipientName', 'description',
       ],
       include: [
         {
           model: movementProductsModel,
           as: 'inventoryMovementProduct',
           include: [
-            {
-              model: productsModel,
-              as: 'product',
-              attributes: ['name'],
-            },
+            { model: productsModel, as: 'product', attributes: ['name'] },
           ],
         },
-        {
-          model: departmentsModel,
-          as: 'movementDepartment',
-          attributes: ['name'],
-        },
+        { model: departmentsModel, as: 'movementDepartment', attributes: ['name'] },
       ],
       where: {
         movementDate: {
@@ -580,125 +560,102 @@ export const reportProductPDF = async (req, res) => {
     })
 
     if (movements.length === 0) {
-      return res.status(404).json({
-        message:
-          'No se encontraron registros en el rango de fechas seleccionado.',
-      })
+      return res.status(404).json({ message: 'No se encontraron registros en el rango de fechas seleccionado.' })
     }
 
-    // Crear un nuevo documento PDF
-    const doc = new PDFDocument({ margin: 20 }) // Reducir margen
+    const doc = new PDFDocument({ margin: 20 })
     const logoPath = path.join(getDirName(), 'public', 'logo.png')
-    const qrPath = path.join(getDirName(), 'public', 'qr.png') // Asegúrate de que la ruta del QR sea correcta
 
-    // Configurar la respuesta para descargar el archivo
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="reporte_movimientos.pdf"'
-    )
+    res.setHeader('Content-Disposition', 'attachment; filename="reporte_movimientos.pdf"')
     res.setHeader('Content-Type', 'application/pdf')
 
-    // Enviar el PDF como respuesta
     doc.pipe(res)
 
-    // Añadir logo
-    doc.image(logoPath, 50, 20, { width: 80 }) // Ajustar tamaño del logo
+    doc.image(logoPath, 50, 20, { width: 80 })
     doc.fontSize(12).text('Tenería Rubio C.A', 120, 30, { align: 'center' })
+    doc.fontSize(16).text('Reporte de Movimientos de Inventario', { align: 'center' })
 
-    // Agregar un título
-    doc
-      .fontSize(16)
-      .text('Reporte de Movimientos de Inventario', { align: 'center' })
+    let yPosition = 80
+    const lineHeight = 35
+    const itemHeight = 15
+    const extraSpacing = 4
 
-    // Definir los encabezados
-    doc.moveDown()
-    doc
-      .fontSize(10) // Reducir tamaño de fuente
-      .text('Tipo', 50, 100, { width: 60 }) // Ajustar ancho
-      .text('Descripción', 110, 100, { width: 150 }) // Ajustar ancho
-      .text('Fecha', 260, 100, { width: 60 }) // Ajustar ancho
-      .text('Departamento', 320, 100, { width: 100 }) // Ajustar ancho
-      .text('Nombre del Destinatario', 420, 100, { width: 100 }) // Ajustar ancho
+    let movimientosPorPagina = 0
 
-    // Función para truncar el texto si supera una longitud
-    const truncateText = (text, maxLength) => {
-      return text.length > maxLength
-        ? text.substring(0, maxLength) + '...'
-        : text
-    }
+    for (let i = 0; i < movements.length; i++) {
+      const movement = movements[i]
+      const numProductos = movement.inventoryMovementProduct.length
+      const alturaMovimiento = lineHeight * 2 + (itemHeight + extraSpacing) * Math.min(numProductos, 6)
 
-    // Insertar los datos
-    let yPosition = 140
-    const pageHeightLimit = doc.page.height - 50
-    const lineHeight = 20 // Reducir altura de línea
-    const maxYPosition = pageHeightLimit - 80 // Límite de posición Y para evitar el footer
-
-    movements.forEach((item) => {
-      if (yPosition + lineHeight > maxYPosition) {
-        addFooter(doc, qrPath) // Agregar footer antes de cambiar de página
+      // Si no cabe el movimiento completo en la página actual, añadir una nueva página
+      if (yPosition + alturaMovimiento > doc.page.height - doc.page.margins.bottom || movimientosPorPagina >= 3) {
         doc.addPage()
-        yPosition = 140
-        doc
-          .fontSize(10)
-          .text('Tipo', 50, yPosition, { width: 60 })
-          .text('Descripción', 110, yPosition, { width: 150 })
-          .text('Fecha', 260, yPosition, { width: 60 })
-          .text('Departamento', 320, yPosition, { width: 100 })
-          .text('Nombre del Destinatario', 420, yPosition, { width: 100 })
-        yPosition += 30
+        yPosition = 50
+        movimientosPorPagina = 0 // Reiniciar el conteo de movimientos por página
       }
 
-      doc
-        .text(truncateText(item.movementType, 20), 50, yPosition, {
-          width: 60,
-        })
-        .text(truncateText(item.description, 30), 110, yPosition, {
-          width: 150,
-        })
-        .text(
-          new Date(item.movementDate).toLocaleDateString('es-ES'),
-          260,
-          yPosition,
-          { width: 60 }
-        )
-        .text(
-          item.movementDepartment?.name || 'Sin Departamento',
-          320,
-          yPosition,
-          { width: 100 }
-        )
-        .text(item.recipientName || 'Sin Nombre', 420, yPosition, {
-          width: 100,
-        })
+      // Encabezado del movimiento
+      doc.fontSize(14).fillColor('black').text(`Movimiento #${i + 1}`, 50, yPosition)
+      yPosition += lineHeight + extraSpacing
 
-      // Separador entre filas - Ajustar longitud de la línea
-      doc
-        .moveTo(50, yPosition + lineHeight - 5)
-        .lineTo(570, yPosition + lineHeight - 5)
-        .stroke()
-      yPosition += lineHeight
-    })
+      doc.fontSize(12)
+        .text(`Tipo de Movimiento: ${movement.movementType}`)
+        .text(`Fecha: ${new Date(movement.movementDate).toLocaleDateString('es-ES')}`)
+        .text(`Nombre del Destinatario: ${movement.recipientName || 'Sin Nombre'}`)
 
-    // Agregar el footer al final
-    addFooter(doc, qrPath)
+      if (movement.movementDepartment) {
+        doc.text(`Departamento: ${movement.movementDepartment.name}`)
+      }
 
-    // Finalizar el documento
+      yPosition += lineHeight // Espacio después de la información
+
+      // Encabezado de la tabla de productos
+      const tableTop = yPosition
+      const headerHeight = 15
+
+      doc.rect(50, tableTop, 500, headerHeight).fill('#791021')
+      doc.fillColor('white')
+        .fontSize(10)
+        .text('Cantidad', 60, tableTop + 2, { width: 100, align: 'center' })
+        .text('Producto', 200, tableTop + 2, { width: 300, align: 'center' })
+
+      yPosition += headerHeight + extraSpacing
+
+      let productosPorPagina = 0
+
+      for (let j = 0; j < numProductos; j++) {
+        const product = movement.inventoryMovementProduct[j]
+
+        // Si ya tenemos 6 productos listados, terminar y pasar al siguiente movimiento
+        if (productosPorPagina >= 6) break
+
+        // Si el producto no cabe en la página actual, iniciar nueva página
+        if (yPosition + itemHeight > doc.page.height - doc.page.margins.bottom) {
+          doc.addPage()
+          yPosition = 40
+          doc.rect(50, yPosition, 500, headerHeight).fill('#791021')
+          doc.fillColor('white')
+            .fontSize(10)
+            .text('Cantidad', 60, yPosition + 2, { width: 100, align: 'center' })
+            .text('Producto', 200, yPosition + 2, { width: 300, align: 'center' })
+          yPosition += headerHeight + extraSpacing
+        }
+
+        doc.fillColor('black').fontSize(10)
+          .text(product.quantity, 60, yPosition + 2, { width: 100, align: 'center' })
+          .text(product.product.name, 200, yPosition + 2, { width: 300, align: 'center' })
+
+        yPosition += itemHeight + extraSpacing
+        productosPorPagina++
+      }
+
+      doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke()
+      yPosition += lineHeight + extraSpacing
+
+      movimientosPorPagina++
+    }
+
     doc.end()
-
-    // Guardar el registro en la tabla "reports"
-    const filePath = path.join(
-      getDirName(),
-      'public',
-      'reportes',
-      `reporte_${Date.now()}.pdf`
-    )
-    await reportModel.create({
-      filePath: filePath,
-      startDate: start,
-      endDate: end,
-      userId: usuarioId,
-      status: 1,
-    })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Error al generar el reporte' })
