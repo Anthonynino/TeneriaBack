@@ -1,94 +1,71 @@
-import { productsModel } from './products.model.js'
-import { categoryModel } from './category.model.js'
-import { rolModel } from './roles.model.js'
-import { userModel } from './user.model.js'
-import { inventoryMovementsModel } from './inventoryMovements.model.js'
-import { suppliersModel } from './suppliers.model.js'
-import { departmentsModel } from './departments.model.js'
-import { reportModel } from './reports.model.js'
-import { movementProductsModel } from './movement_products.js'
+import { initializeModels } from './index.js'
 
-// Define la relación entre un Usuario y un Rol
-userModel.belongsTo(rolModel, {
-  foreignKey: 'rolId',
-  as: 'rol',
-})
-rolModel.hasMany(userModel, {
-  foreignKey: 'rolId',
-  as: 'users',
-})
+export const defineRelations = (sequelize) => {
+  const {
+    Category,
+    Role,
+    User,
+    Product,
+    InventoryMovement,
+    Supplier,
+    Department,
+    Report,
+    MovementProduct,
+  } = initializeModels(sequelize)
 
-// Define la relación entre un Producto y una Categoría
-productsModel.belongsTo(categoryModel, {
-  foreignKey: 'categoryId',
-  as: 'productCategory',
-})
-categoryModel.hasMany(productsModel, {
-  foreignKey: 'categoryId',
-  as: 'categoryProducts',
-})
+  // Define la relación entre un Usuario y un Rol
+  User.belongsTo(Role, { foreignKey: 'rolId', as: 'rol' })
+  Role.hasMany(User, { foreignKey: 'rolId', as: 'users' })
 
-// Define la relación entre un Movimiento de Inventario y un Usuario
-inventoryMovementsModel.belongsTo(userModel, {
-  foreignKey: 'userId',
-  as: 'user',
-})
+  // Define la relación entre un Producto y una Categoría
+  Product.belongsTo(Category, {
+    foreignKey: 'categoryId',
+    as: 'productCategory',
+  })
+  Category.hasMany(Product, {
+    foreignKey: 'categoryId',
+    as: 'categoryProducts',
+  })
 
-userModel.hasMany(inventoryMovementsModel, {
-  foreignKey: 'userId',
-  as: 'inventoryMovements',
-})
+  // Define la relación entre un Movimiento de Inventario y un Usuario
+  InventoryMovement.belongsTo(User, { foreignKey: 'userId', as: 'user' })
+  User.hasMany(InventoryMovement, {
+    foreignKey: 'userId',
+    as: 'inventoryMovements',
+  })
 
-// Define la relación entre un Producto y un Proveedor
-productsModel.belongsTo(suppliersModel, {
-  foreignKey: 'supplierId',
-  as: 'supplier',
-})
+  // Define la relación entre un Producto y un Proveedor
+  Product.belongsTo(Supplier, { foreignKey: 'supplierId', as: 'supplierProduct' })
+  Supplier.hasMany(Product, { foreignKey: 'supplierId', as: 'products' })
 
-suppliersModel.hasMany(productsModel, {
-  foreignKey: 'supplierId',
-  as: 'products',
-})
+  // Define las relaciones entre un Movimiento de Inventario y un Departamento
+  InventoryMovement.belongsTo(Department, {
+    foreignKey: 'departmentId',
+    as: 'movementDepartment',
+  })
+  Department.hasMany(InventoryMovement, {
+    foreignKey: 'departmentId',
+    as: 'departmentInventory',
+  })
 
-//Define las relaciones entre un movimiento de invetario y un departamento
-inventoryMovementsModel.belongsTo(departmentsModel, {
-  foreignKey: 'departmentId',
-  as: 'movementDepartment',
-})
+  // Definir relaciones de un Usuario con el Reporte
+  Report.belongsTo(User, { foreignKey: 'userId', as: 'reportUser' })
+  User.hasMany(Report, { foreignKey: 'userId', as: 'usersReports' })
 
-departmentsModel.hasMany(inventoryMovementsModel, {
-  foreignKey: 'departmentId',
-  as: 'departmentInventory',
-})
+  // Relación entre el Movimiento del Inventario y el Movimiento del Producto
+  InventoryMovement.hasMany(MovementProduct, {
+    foreignKey: 'movementId',
+    as: 'inventoryMovementProduct',
+  })
+  MovementProduct.belongsTo(InventoryMovement, {
+    foreignKey: 'movementId',
+    as: 'movementProductInventory',
+  })
 
-//Definir relaciones de un usuario con el reporte
-reportModel.belongsTo(userModel, {
-  foreignKey: 'userId',
-  as: 'reportUser',
-})
-
-userModel.hasMany(reportModel, {
-  foreignKey: 'userId',
-  as: 'usersReports',
-})
-
-// Relacion entre el movimiento del inventario y el movimiento del producto
-inventoryMovementsModel.hasMany(movementProductsModel, {
-  foreignKey: 'movementId',
-  as: 'inventoryMovementProduct',
-})
-
-movementProductsModel.belongsTo(inventoryMovementsModel, {
-  foreignKey: 'movementId',
-  as: 'movementProductInventory',
-})
-
-// Define la relación entre un Movimiento de Inventario y un Producto
-movementProductsModel.belongsTo(productsModel, {
-  foreignKey: 'productId',
-  as: 'product',
-})
-productsModel.hasMany(movementProductsModel, {
-  foreignKey: 'productId',
-  as: 'productsMovements',
-})
+  // Define la relación entre un Movimiento de Inventario y un Producto
+  MovementProduct.belongsTo(Product, { foreignKey: 'productId', as: 'product' })
+  Product.hasMany(MovementProduct, {
+    foreignKey: 'productId',
+    as: 'productsMovements',
+  })
+}

@@ -1,43 +1,44 @@
-import { sequelize } from '../database/db.js'
-import { DataTypes } from 'sequelize'
-import { Sequelize} from 'sequelize'
+import { DataTypes } from 'sequelize';
+import { Sequelize } from 'sequelize';
 
-export const reportModel = sequelize.define(
-  'reports',
-  {
-    id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
+export function reportModel(sequelize) {
+  return sequelize.define(
+    'reports',
+    {
+      id: {
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad con SQLite
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      filePath: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      generatedDate: {
+        type: DataTypes.DATE, // DATE es compatible con SQLite
+        allowNull: true,
+        defaultValue: Sequelize.NOW,
+      },
+      startDate: {
+        type: DataTypes.DATE, // DATE es compatible con SQLite
+        allowNull: true,
+      },
+      endDate: {
+        type: DataTypes.DATE, // DATE es compatible con SQLite
+        allowNull: true,
+      },
+      userId: {
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad
+        allowNull: true,
+      },
+      status: {
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad
+        allowNull: false,
+        defaultValue: 1,
+      },
     },
-    filePath: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    generatedDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: Sequelize.NOW,
-    },
-    startDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    endDate: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    userId: {
-      type: DataTypes.BIGINT,
-      allowNull: true
-    },
-    status: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      defaultValue: 1,
-    },
-  },
-  {
-    timestamps: false,
-  }
-)
+    {
+      timestamps: false,
+    }
+  );
+}

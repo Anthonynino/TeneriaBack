@@ -1,10 +1,10 @@
-import { suppliersModel } from '../models/suppliers.model.js'
+import { models } from '../database/db.js'
 import { Op } from 'sequelize'
 
 // Obtiene todos los proveedores
 export const getAllSuppliers = async (req, res) => {
   try {
-    const suppliers = await suppliersModel.findAll({
+    const suppliers = await models.Supplier.findAll({
       where: { status: 1 },
     })
     res.json(suppliers)
@@ -17,7 +17,7 @@ export const getAllSuppliers = async (req, res) => {
 export const getOneSupplier = async (req, res) => {
   try {
     const { supplierId } = req.params
-    const supplier = await suppliersModel.findOne({
+    const supplier = await models.Supplier.findOne({
       where: {
         id: supplierId,
         status: 1,
@@ -53,7 +53,7 @@ export const createNewSupplier = async (req, res) => {
     }
 
     // Validar que no exista un proveedor con el mismo RIF
-    const existingSupplierByRIF = await suppliersModel.findOne({
+    const existingSupplierByRIF = await models.Supplier.findOne({
       where: { rif },
     })
 
@@ -64,7 +64,7 @@ export const createNewSupplier = async (req, res) => {
     }
 
     // Validar que no exista un proveedor con el mismo fullCode
-    const existingSupplierByCode = await suppliersModel.findOne({
+    const existingSupplierByCode = await models.Supplier.findOne({
       where: { code: fullCode },
     })
 
@@ -75,7 +75,7 @@ export const createNewSupplier = async (req, res) => {
     }
 
     // Crear el nuevo proveedor
-    const newSupplier = await suppliersModel.create({
+    const newSupplier = await models.Supplier.create({
       name: companyName,
       rif,
       code: fullCode,
@@ -101,19 +101,16 @@ export const editSupplier = async (req, res) => {
     finalCode,
   } = req.body
 
-  
-  console.log('Valor del codigo completo: ' + finalCode)
-
   try {
     // Encuentra el proveedor por ID
-    const supplier = await suppliersModel.findByPk(supplierId)
+    const supplier = await models.Supplier.findByPk(supplierId)
 
     if (!supplier) {
       return res.status(404).json({ message: 'Proveedor no encontrado' })
     }
 
     // Verificar si el código ya existe en otros proveedores
-    const existingSupplier = await suppliersModel.findOne({
+    const existingSupplier = await models.Supplier.findOne({
       where: {
         code: finalCode,
         id: { [Op.ne]: supplierId }, // Excluir el proveedor actual

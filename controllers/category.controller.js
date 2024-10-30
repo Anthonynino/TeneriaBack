@@ -1,9 +1,9 @@
-import { categoryModel } from "../models/category.model.js"
+import { models } from '../database/db.js';
 
 //Obtener todas las categorias
 export const getAllCategories = async (req, res) => {
     try {
-      const categories = await categoryModel.findAll({
+      const categories = await models.Category.findAll({
         where: { status: 1 },
       })
       res.json(categories)

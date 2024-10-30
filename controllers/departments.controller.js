@@ -1,9 +1,8 @@
-import { departmentsModel } from '../models/departments.model.js'
-
+import { models } from '../database/db.js';
 //Obtener todos los departamentos
 export const getAllDepartments = async (req, res) => {
     try {
-      const departments = await departmentsModel.findAll({
+      const departments = await models.Department.findAll({
         where: { status: 1 },
         attributes: ['id', 'name'],
       })

@@ -1,24 +1,24 @@
-import { sequelize } from '../database/db.js'
-import { DataTypes } from 'sequelize'
+import { DataTypes } from 'sequelize';
 
-export const movementProductsModel = sequelize.define(
+export function movementProductsModel(sequelize) {
+  return sequelize.define(
     'movement_products',
     {
       id: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad con SQLite
         autoIncrement: true,
         primaryKey: true,
       },
       movementId: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad
         allowNull: true,
       },
       productId: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad
         allowNull: false,
       },
       quantity: {
-        type: DataTypes.BIGINT,
+        type: DataTypes.INTEGER, // Cambiado a INTEGER para compatibilidad
         allowNull: false,
       },
     },
@@ -26,4 +26,4 @@ export const movementProductsModel = sequelize.define(
       timestamps: false,
     }
   );
-  
+}

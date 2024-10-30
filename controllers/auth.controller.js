@@ -1,5 +1,5 @@
 //Se importa el esquema que estamos usando de los usuarios
-import { userModel } from "../models/user.model.js";
+import { models } from '../database/db.js';
 
 //importacion para encriptar la contraseña
 import bcrypt from "bcryptjs";
@@ -14,27 +14,27 @@ import { TOKEN_SECRET } from "../config.js";
 //Registra un nuevo usuario.
 export const register = async (req, res) => {
   const { username, password, rolId } = req.body;
+
   try {
-    //Encriptacion de la contraseña
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const newUser = await userModel.create({
+    const newUser = await models.User.create({
       username,
       password: passwordHash,
-      rolId
+      rolId,
     });
 
-    //Aqui lo que hacemos es pasarle el parametro que vamos a usar para indentificar el token, que es el id
+    // Crear el token
     const token = await createAccessToken({ id: newUser.id });
 
-    res.cookie("token", token);
+    // Configurar la cookie
+    res.cookie("token", token, { httpOnly: true });
 
-    //Respuesta al usuario con todos los datos
+    // Respuesta al usuario con todos los datos
     res.json(newUser);
   } catch (error) {
-    res
-      .status(500)
-      .json(["No se pudo registrar, revisa el nombre del usuario"]);
+    console.error("Error al registrar el usuario:", error); // Loguear el error para depuración
+    res.status(500).json({ message: "No se pudo registrar, revisa el nombre del usuario" });
   }
 };
 
@@ -42,7 +42,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { username, password } = req.body;
   try {
-    const userFound = await userModel.findOne({
+    const userFound = await models.User.findOne({
       where: {
         username,
       },
@@ -87,7 +87,7 @@ export const verifyToken = async (req, res) => {
     if (error) {
       return res.status(401).json({ message: "No autorizado" });
     }
-    const userFound = userModel.findByPk(user.id);
+    const userFound = models.User.findByPk(user.id);
     if (!userFound) {
       return res.status(401).json({ message: "No autorizado" });
     }

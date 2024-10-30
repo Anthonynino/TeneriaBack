@@ -1,12 +1,7 @@
-import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
-import { productsModel } from '../models/products.model.js'
-import { departmentsModel } from '../models/departments.model.js'
-import { movementProductsModel } from '../models/movement_products.js'
-import { suppliersModel } from '../models/suppliers.model.js'
+import { models } from '../database/db.js'
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
-import { reportModel } from '../models/reports.model.js'
 import { Sequelize } from 'sequelize'
 import ExcelJS from 'exceljs'
 import moment from 'moment'
@@ -21,7 +16,7 @@ export const reportSuppliersExcel = async (req, res) => {
     const { usuarioId } = req.params
 
     // Obtener datos de proveedores activos
-    const suppliers = await suppliersModel.findAll({
+    const suppliers = await models.Supplier.findAll({
       attributes: ['name', 'rif', 'code', 'location'],
       where: { status: 1 },
     })
@@ -118,7 +113,7 @@ export const reportSuppliersExcel = async (req, res) => {
     await workbook.xlsx.writeFile(filePath)
 
     // Guardar un registro en la base de datos
-    await reportModel.create({
+    await models.Report.create({
       filePath: filePath,
       startDate: new Date(),
       endDate: new Date(),
@@ -163,7 +158,7 @@ export const reportSuppliersPDF = async (req, res) => {
     const { usuarioId } = req.params
 
     // Obtener los datos de la base de datos usando Sequelize
-    const datos = await suppliersModel.findAll({
+    const datos = await models.Supplier.findAll({
       attributes: ['name', 'rif', 'code', 'location'],
     })
 
@@ -258,7 +253,7 @@ export const reportSuppliersPDF = async (req, res) => {
     doc.end()
 
     // Guardar el registro en la base de datos
-    await reportModel.create({
+    await models.Report.create({
       filePath: filePath,
       startDate: new Date(),
       endDate: new Date(),
@@ -337,36 +332,41 @@ export const reportProductExcel = async (req, res) => {
     ).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
 
     // Consultar movimientos de inventario y productos relacionados
-    const movements = await inventoryMovementsModel.findAll({
-      attributes: [
-        'id',
-        'movementType',
-        'description',
-        'movementDate',
-        'recipientName',
-      ],
-      include: [
-        {
-          model: movementProductsModel,
-          as: 'inventoryMovementProduct',
-          include: [
-            {
-              model: productsModel,
-              as: 'product',
-              attributes: ['name'],
-            },
-          ],
-        },
-        {
-          model: departmentsModel,
-          as: 'movementDepartment',
+    const movements = await models.InventoryMovement.findAll({
+      attributes: ['id', 'movementType', 'description', 'movementDate', 'recipientName', 'departmentId'],
+      where: Sequelize.literal(`"movementDate" >= '${start.toISOString()}' AND "movementDate" <= '${endFormatted}'`),
+    });
+
+    const movementsWithDetails = await Promise.all(movements.map(async (movement) => {
+      const products = await models.MovementProduct.findAll({
+        where: { movementId: movement.id },
+        attributes: ['productId', 'quantity'],
+      });
+
+      const productDetails = await Promise.all(products.map(async (product) => {
+        const productData = await models.Product.findOne({
+          where: { id: product.productId },
           attributes: ['name'],
-        },
-      ],
-      where: Sequelize.literal(
-        `"movementDate" >= '${start.toISOString()}' AND "movementDate" <= '${endFormatted}'`
-      ),
-    })
+        });
+        return {
+          name: productData ? productData.name : 'Producto desconocido',
+          quantity: product.quantity,
+        };
+      }));
+
+      const department = movement.movementType !== 'Entrada'
+        ? await models.Department.findOne({
+            where: { id: movement.departmentId },
+            attributes: ['name'],
+          })
+        : { name: 'Almacén' };
+
+      return {
+        ...movement.toJSON(),
+        products: productDetails,
+        departmentName: department ? department.name : 'Sin departamento',
+      };
+    }));
 
     if (movements.length === 0) {
       return res.status(404).json({
@@ -433,7 +433,7 @@ export const reportProductExcel = async (req, res) => {
       sheet.getCell(9, index + 1).style = headerStyle
     })
 
-    movements.forEach((item, rowIndex) => {
+    movementsWithDetails.forEach((item, rowIndex) => {
       const row = rowIndex + 10 // Comenzar a llenar datos desde la fila 10
 
       sheet.getCell(row, 1).value = item.movementType || 'Sin tipo'
@@ -490,7 +490,7 @@ export const reportProductExcel = async (req, res) => {
 
     await workbook.xlsx.writeFile(filePath)
 
-    await reportModel.create({
+    await models.Report.create({
       filePath: filePath,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
@@ -522,142 +522,73 @@ export const reportProductExcel = async (req, res) => {
 // PDF REPORTE PRODUCTOS
 export const reportProductPDF = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query
+    const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Debe proporcionar fechas de inicio y fin' })
+      return res.status(400).json({ message: 'Debe proporcionar fechas de inicio y fin' });
     }
 
-    const start = moment(startDate, 'YYYY-MM-DD', true)
-    const end = moment(endDate, 'YYYY-MM-DD', true)
+    const start = moment(startDate, 'YYYY-MM-DD', true);
+    const end = moment(endDate, 'YYYY-MM-DD', true);
 
     if (!start.isValid() || !end.isValid()) {
-      return res.status(400).json({ message: 'Fechas inválidas' })
+      return res.status(400).json({ message: 'Fechas inválidas' });
     }
 
-    const adjustedStart = start.startOf('day').toISOString()
-    const adjustedEnd = end.endOf('day').toISOString()
+    const adjustedStart = start.startOf('day').toISOString();
+    const adjustedEnd = end.endOf('day').toISOString();
 
-    const movements = await inventoryMovementsModel.findAll({
-      attributes: [
-        'id', 'movementType', 'movementDate', 'recipientName', 'description',
-      ],
-      include: [
-        {
-          model: movementProductsModel,
-          as: 'inventoryMovementProduct',
-          include: [
-            { model: productsModel, as: 'product', attributes: ['name'] },
-          ],
-        },
-        { model: departmentsModel, as: 'movementDepartment', attributes: ['name'] },
-      ],
+    // Consulta sin los `include`
+    const movements = await models.InventoryMovement.findAll({
+      attributes: ['id', 'movementType', 'movementDate', 'recipientName', 'description'],
       where: {
         movementDate: {
           [Sequelize.Op.between]: [adjustedStart, adjustedEnd],
         },
       },
-    })
+    });
 
     if (movements.length === 0) {
-      return res.status(404).json({ message: 'No se encontraron registros en el rango de fechas seleccionado.' })
+      return res.status(404).json({ message: 'No se encontraron registros en el rango de fechas seleccionado.' });
     }
 
-    const doc = new PDFDocument({ margin: 20 })
-    const logoPath = path.join(getDirName(), 'public', 'logo.png')
+    const doc = new PDFDocument({ margin: 20 });
+    const logoPath = path.join(getDirName(), 'public', 'logo.png');
 
-    res.setHeader('Content-Disposition', 'attachment; filename="reporte_movimientos.pdf"')
-    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'attachment; filename="reporte_movimientos.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
 
-    doc.pipe(res)
+    doc.pipe(res);
 
-    doc.image(logoPath, 50, 20, { width: 80 })
-    doc.fontSize(12).text('Tenería Rubio C.A', 120, 30, { align: 'center' })
-    doc.fontSize(16).text('Reporte de Movimientos de Inventario', { align: 'center' })
+    doc.image(logoPath, 50, 20, { width: 80 });
+    doc.fontSize(12).text('Tenería Rubio C.A', 120, 30, { align: 'center' });
+    doc.fontSize(16).text('Reporte de Movimientos de Inventario', { align: 'center' });
 
-    let yPosition = 80
-    const lineHeight = 35
-    const itemHeight = 15
-    const extraSpacing = 4
-
-    let movimientosPorPagina = 0
+    let yPosition = 80;
+    const lineHeight = 45;
 
     for (let i = 0; i < movements.length; i++) {
-      const movement = movements[i]
-      const numProductos = movement.inventoryMovementProduct.length
-      const alturaMovimiento = lineHeight * 2 + (itemHeight + extraSpacing) * Math.min(numProductos, 6)
-
-      // Si no cabe el movimiento completo en la página actual, añadir una nueva página
-      if (yPosition + alturaMovimiento > doc.page.height - doc.page.margins.bottom || movimientosPorPagina >= 3) {
-        doc.addPage()
-        yPosition = 50
-        movimientosPorPagina = 0 // Reiniciar el conteo de movimientos por página
-      }
+      const movement = movements[i];
 
       // Encabezado del movimiento
-      doc.fontSize(14).fillColor('black').text(`Movimiento #${i + 1}`, 50, yPosition)
-      yPosition += lineHeight + extraSpacing
+      doc.fontSize(14).fillColor('black').text(`Movimiento #${i + 1}`, 50, yPosition);
+      yPosition += lineHeight;
 
       doc.fontSize(12)
         .text(`Tipo de Movimiento: ${movement.movementType}`)
         .text(`Fecha: ${new Date(movement.movementDate).toLocaleDateString('es-ES')}`)
         .text(`Nombre del Destinatario: ${movement.recipientName || 'Sin Nombre'}`)
+        .text(`Descripcion: ${movement.description || 'Sin Descripción'}`);
 
-      if (movement.movementDepartment) {
-        doc.text(`Departamento: ${movement.movementDepartment.name}`)
-      }
+      yPosition += lineHeight;
 
-      yPosition += lineHeight // Espacio después de la información
-
-      // Encabezado de la tabla de productos
-      const tableTop = yPosition
-      const headerHeight = 15
-
-      doc.rect(50, tableTop, 500, headerHeight).fill('#791021')
-      doc.fillColor('white')
-        .fontSize(10)
-        .text('Cantidad', 60, tableTop + 2, { width: 100, align: 'center' })
-        .text('Producto', 200, tableTop + 2, { width: 300, align: 'center' })
-
-      yPosition += headerHeight + extraSpacing
-
-      let productosPorPagina = 0
-
-      for (let j = 0; j < numProductos; j++) {
-        const product = movement.inventoryMovementProduct[j]
-
-        // Si ya tenemos 6 productos listados, terminar y pasar al siguiente movimiento
-        if (productosPorPagina >= 6) break
-
-        // Si el producto no cabe en la página actual, iniciar nueva página
-        if (yPosition + itemHeight > doc.page.height - doc.page.margins.bottom) {
-          doc.addPage()
-          yPosition = 40
-          doc.rect(50, yPosition, 500, headerHeight).fill('#791021')
-          doc.fillColor('white')
-            .fontSize(10)
-            .text('Cantidad', 60, yPosition + 2, { width: 100, align: 'center' })
-            .text('Producto', 200, yPosition + 2, { width: 300, align: 'center' })
-          yPosition += headerHeight + extraSpacing
-        }
-
-        doc.fillColor('black').fontSize(10)
-          .text(product.quantity, 60, yPosition + 2, { width: 100, align: 'center' })
-          .text(product.product.name, 200, yPosition + 2, { width: 300, align: 'center' })
-
-        yPosition += itemHeight + extraSpacing
-        productosPorPagina++
-      }
-
-      doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke()
-      yPosition += lineHeight + extraSpacing
-
-      movimientosPorPagina++
+      doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
+      yPosition += lineHeight;
     }
 
-    doc.end()
+    doc.end();
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: 'Error al generar el reporte' })
+    console.error(error);
+    res.status(500).json({ message: 'Error al generar el reporte' });
   }
-}
+};

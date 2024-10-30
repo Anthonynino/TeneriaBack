@@ -30,7 +30,7 @@ app.use("/api", reportRoutes);
 
 async function main() {
   try {
-    await sequelize.sync({ force: false });
+    await sequelize.sync();
     app.listen(8000);
     console.log("El servidor se esta ejecutando http://localhost:8000/");
   } catch (error) {

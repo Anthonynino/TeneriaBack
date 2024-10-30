@@ -1,7 +1,4 @@
-import { productsModel } from '../models/products.model.js'
-import { inventoryMovementsModel } from '../models/inventoryMovements.model.js'
-import { movementProductsModel } from '../models/movement_products.js'
-import { suppliersModel } from '../models/suppliers.model.js'
+import { models } from '../database/db.js'
 import { sequelize } from '../database/db.js'
 import { Op } from 'sequelize'
 import PDFDocument from 'pdfkit'
@@ -15,30 +12,42 @@ const getDirName = () => {
 
 //Obtener todos los productos
 export const getAllProducts = async (req, res) => {
-  const { categoryId } = req.params // Obtener el parámetro de ruta categoryId
+  const { categoryId } = req.params; // Obtener el parámetro de ruta categoryId
   try {
-    const products = await productsModel.findAll({
+    // Paso 1: Buscar todos los productos con el `categoryId` y `status`
+    const products = await models.Product.findAll({
       where: { categoryId, status: 1 },
       order: [['code', 'ASC']],
-      include: [
-        {
-          model: suppliersModel,
-          as: 'supplier',
+    });
+
+    // Paso 2: Para cada producto, obtener el nombre del proveedor
+    const productsWithSuppliers = await Promise.all(
+      products.map(async (product) => {
+        const supplier = await models.Supplier.findOne({
+          where: { id: product.supplierId }, // Asegúrate de que `supplierId` es la clave correcta
           attributes: ['name'],
-        },
-      ],
-    })
-    res.json(products)
+        });
+        // Combinar la información del producto con la del proveedor
+        return {
+          ...product.toJSON(),
+          supplierName: supplier ? supplier.name : null, // Agrega el nombre del proveedor
+        };
+      })
+    );
+
+    // Paso 3: Retornar la lista de productos con nombres de proveedores
+    res.json(productsWithSuppliers);
   } catch (error) {
-    res.status(500).json({ message: 'Error al buscar los productos', error })
+    console.error("Error al buscar los productos:", error);
+    res.status(500).json({ message: 'Error al buscar los productos', error });
   }
-}
+};
 
 //Obtener solo un producto
 export const getProduct = async (req, res) => {
   try {
     const id = req.params.id
-    const product = await productsModel.findOne({
+    const product = await models.Product.findOne({
       where: {
         id,
         status: 1,
@@ -69,7 +78,7 @@ export const createProduct = async (req, res) => {
     }
 
     // Verificar si el nombre o código del producto ya existen
-    const existingProductByName = await productsModel.findOne({
+    const existingProductByName = await models.Product.findOne({
       where: { name },
     })
     if (existingProductByName) {
@@ -78,7 +87,7 @@ export const createProduct = async (req, res) => {
         .json({ message: 'El nombre del producto ya está en uso' })
     }
 
-    const existingProductByCode = await productsModel.findOne({
+    const existingProductByCode = await models.Product.findOne({
       where: { code },
     })
     if (existingProductByCode) {
@@ -88,7 +97,7 @@ export const createProduct = async (req, res) => {
     }
 
     // Crear el nuevo producto
-    const newProduct = await productsModel.create(
+    const newProduct = await models.Product.create(
       {
         name,
         quantity: 0,
@@ -201,7 +210,7 @@ export const creteEntryProducts = async (req, res) => {
     }
 
     // Crear el movimiento de inventario
-    const movement = await inventoryMovementsModel.create(
+    const movement = await models.InventoryMovement.create(
       inventoryMovementData,
       { transaction }
     )
@@ -222,7 +231,7 @@ export const creteEntryProducts = async (req, res) => {
       }
 
       // Buscar el producto en la base de datos
-      const existingProduct = await productsModel.findByPk(productId, {
+      const existingProduct = await models.Product.findByPk(productId, {
         transaction,
       })
       if (!existingProduct) {
@@ -233,7 +242,7 @@ export const creteEntryProducts = async (req, res) => {
       }
 
       // Registrar el movimiento del producto en la nueva tabla
-      await movementProductsModel.create(
+      await models.MovementProduct.create(
         {
           movementId: movement.id, // Usar el ID del movimiento creado
           productId,
@@ -267,7 +276,8 @@ export const creteEntryProducts = async (req, res) => {
 export const createProductExit = async (req, res) => {
   const transaction = await sequelize.transaction()
   try {
-    const { arrayProducts, userId, departmentId, description, recipientName } = req.body
+    const { arrayProducts, userId, departmentId, description, recipientName } =
+      req.body
 
     // Generar un número de recibo único de 6 dígitos
     const receiptNumber = await generateReceiptNumber()
@@ -284,7 +294,7 @@ export const createProductExit = async (req, res) => {
     }
 
     // Crear el movimiento de inventario
-    const movement = await inventoryMovementsModel.create(
+    const movement = await models.InventoryMovement.create(
       inventoryMovementData,
       { transaction }
     )
@@ -305,7 +315,7 @@ export const createProductExit = async (req, res) => {
       }
 
       // Buscar el producto en la base de datos
-      const existingProduct = await productsModel.findByPk(productId, {
+      const existingProduct = await models.Product.findByPk(productId, {
         transaction,
       })
       if (!existingProduct) {
@@ -324,7 +334,7 @@ export const createProductExit = async (req, res) => {
       }
 
       // Registrar el movimiento del producto en la tabla movement_products
-      await movementProductsModel.create(
+      await models.MovementProduct.create(
         {
           movementId: movement.id,
           productId,
@@ -498,14 +508,14 @@ export const editProduct = async (req, res) => {
     name,
     code,
     ubication,
-    size = null,
+    specifications,
     categoryId,
     supplierId,
   } = req.body
 
   try {
     // Encuentra el producto por ID
-    const product = await productsModel.findByPk(productId)
+    const product = await models.Product.findByPk(productId)
 
     if (!product) {
       return res.status(404).json({ message: 'Producto no encontrado' })
@@ -513,7 +523,7 @@ export const editProduct = async (req, res) => {
 
     // Validar si el nuevo nombre ya existe (excepto el producto actual)
     if (name && name !== product.name) {
-      const existingProductByName = await productsModel.findOne({
+      const existingProductByName = await models.Product.findOne({
         where: {
           name,
           categoryId,
@@ -530,7 +540,7 @@ export const editProduct = async (req, res) => {
 
     // Validar si el nuevo código ya existe (excepto el producto actual)
     if (code && code !== product.code) {
-      const existingProductByCode = await productsModel.findOne({
+      const existingProductByCode = await models.Product.findOne({
         where: {
           code,
           id: { [Op.ne]: productId }, // Excluir el producto actual
@@ -549,7 +559,8 @@ export const editProduct = async (req, res) => {
       name: name !== undefined ? name : product.name,
       code: code !== undefined ? code : product.code,
       ubication: ubication !== undefined ? ubication : product.ubication,
-      size: size !== undefined ? size : product.size,
+      specifications:
+        specifications !== undefined ? specifications : product.specifications,
       categoryId: categoryId !== undefined ? categoryId : product.categoryId,
       supplierId: supplierId !== undefined ? supplierId : product.supplierId,
       date: product.date,
@@ -569,7 +580,7 @@ export const deleteProduct = async (req, res) => {
     const id = req.params.id
 
     // Encuentra el producto por su ID
-    const product = await productsModel.findByPk(id)
+    const product = await models.Product.findByPk(id)
 
     // Si no se encuentra el producto, retorna un error 404
     if (!product) {
@@ -584,7 +595,7 @@ export const deleteProduct = async (req, res) => {
     }
 
     // Si la cantidad es 0, elimina el producto de manera logica
-    await productsModel.update(
+    await models.Product.update(
       { status: 0 },
       {
         where: { id },
@@ -620,7 +631,7 @@ const generateReceiptNumber = async () => {
     receiptNumber = generateRandomString()
 
     // Verificar si el número de recibo ya existe en la base de datos
-    const existingReceipt = await inventoryMovementsModel.findOne({
+    const existingReceipt = await models.InventoryMovement.findOne({
       where: { receiptNumber },
     })
 

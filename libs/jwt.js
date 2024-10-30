@@ -6,19 +6,18 @@ import {TOKEN_SECRET} from '../config.js'
 export function createAccessToken(payload) {
   return new Promise((resolve, reject) => {
     jwt.sign(
-        {
-            payload,
-        },
-        TOKEN_SECRET,
-        {
-          expiresIn: "1d",
-        },
-        (error, token) => {
-          if (error){
-            reject(error)
-          }
-          resolve(token)
+      payload,  // Pasar directamente el payload
+      TOKEN_SECRET,
+      {
+        expiresIn: "31d",
+      },
+      (error, token) => {
+        if (error) {
+          return reject(error); // Retornar inmediatamente si hay un error
         }
-      );
-  })
+        resolve(token);
+      }
+    );
+  });
 }
+

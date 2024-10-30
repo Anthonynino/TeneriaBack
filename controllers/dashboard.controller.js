@@ -1,21 +1,19 @@
-import { productsModel } from '../models/products.model.js'
-import { suppliersModel } from '../models/suppliers.model.js'
-import { reportModel } from '../models/reports.model.js'
+import { models } from '../database/db.js';
 
 // Obtiene toda la cantidad de usuarios, productos y proveedores
 export const getAllQuantities = async (req, res) => {
   try {
-    const reportQuantity = await reportModel.count({
+    const reportQuantity = await models.Report.count({
       where: {
         status: 1,
       },
     })
-    const productQuantity = await productsModel.count({
+    const productQuantity = await models.Product.count({
       where: {
         status: 1,
       },
     })
-    const supplierQuantity = await suppliersModel.count({
+    const supplierQuantity = await models.Supplier.count({
       where: {
         status: 1,
       },
